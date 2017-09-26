@@ -1,0 +1,4 @@
+{ x < 0 }
+add(x, y | z)
+    skip ; skip
+{ z <= 0 }
