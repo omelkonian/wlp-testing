@@ -39,8 +39,8 @@ hoareProgramP = do
 simpleProgramP :: Parser Program
 simpleProgramP = do
   name <- nameP <~ "("
-  inputs <- (varP `sepBy` char ',') <~ "|"
-  outputs <- (varP `sepBy` char ',') <~ ")"
+  inputs <- (nameP `sepBy` char ',') <~ "|"
+  outputs <- (nameP `sepBy` char ',') <~ ")"
   stmt <- stmtP
   return $ Prog name inputs outputs stmt
 
@@ -67,7 +67,7 @@ assumeP = Assume <$> "assume" ~> exprP
 
 asgP :: Parser Stmt
 asgP = do
-  lhs <- asgTargetP `sepBy1` char ','
+  lhs <- nameP `sepBy1` char ','
   rhs <- ":=" ~> (exprP `sepBy1` char ',')
   return $ Asg lhs rhs
 
@@ -86,12 +86,9 @@ whileP = do
 
 varStmtP :: Parser Stmt
 varStmtP = do
-  vars <- "var" ~> (varP `sepBy1` char ',')
+  vars <- "var" ~> (nameP `sepBy1` char ',')
   stmt <- "in" ~> stmtP <~ "end"
   return $ VarStmt vars stmt
-
-asgTargetP :: Parser AsgTarget
-asgTargetP = AsgName <$> nameP
 
 -- Expressions
 exprP :: Parser Expr
@@ -108,9 +105,6 @@ exprP = buildExpressionParser table term <?> "expression"
                try arrayAccessP <|>
                primitiveP <?> "term"
 
-varP :: Parser Variable
-varP = Var <$> lexeme nameP
-
 bvarP :: Parser BoundVariable
 bvarP = lexeme $ do
   name <- nameP
@@ -118,11 +112,15 @@ bvarP = lexeme $ do
   return $ BVar name typ
 
 forallP :: Parser Expr
-forallP = "(" ~> body <~ ")"
-  where body = do
+forallP = "(" ~> (forall <|> exists) <~ ")"
+  where forall = do
          bvar <- "forall" ~> bvarP
          expr <- "::" ~> exprP
          return $ Forall bvar expr
+        exists = do
+         bvar <- "exists" ~> bvarP
+         expr <- "::" ~> exprP
+         return $ Not (Forall bvar (Not expr))
 
 arrayAccessP :: Parser Expr
 arrayAccessP = do

@@ -1,27 +1,22 @@
 module AST where
 
 data Program = Prog { name :: String
-                    , inputs :: [Variable]
-                    , outputs :: [Variable]
+                    , inputs :: [String]
+                    , outputs :: [String]
                     , body :: Stmt
                     }
                     deriving Show
 
+
 data Stmt = Skip
           | Assert Expr
           | Assume Expr
-          | Asg [AsgTarget] [Expr]
+          | Asg [String] [Expr]
           | Seq Stmt Stmt
           | Ite Expr Stmt Stmt
           | While Expr Stmt
-          | VarStmt [Variable] Stmt
+          | VarStmt [String] Stmt
           deriving Show
-
-newtype AsgTarget = AsgName String
-  deriving Show
-
-newtype Variable = Var String
-  deriving Show
 
 data BoundVariable = BVar String Type
   deriving Show

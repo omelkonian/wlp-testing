@@ -1,4 +1,4 @@
-{ x < 0 }
+{ (exists x:int :: x <= 0 ~> x - 1 < 0) }
 add(x, y | z)
     skip ; skip
 { z <= 0 }

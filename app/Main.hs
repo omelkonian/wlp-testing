@@ -3,8 +3,9 @@ module Main where
 import System.IO
 import System.Environment (getArgs)
 import Control.Monad (unless)
-import Text.Parsec (parseTest)
+import Text.Parsec (parse, parseTest)
 import Parser (programP)
+import PrettyPrinter (pp)
 
 interactive = False
 
@@ -16,7 +17,11 @@ main = do
             putStr "λ> "
             program <- getLine
             unless (program == ":q") $ do
-              parseTest programP program
+              case parse programP "" program of
+                Left err -> print err
+                Right prog -> pp prog 0
               main
     else do program <- readFile inputFile
-            parseTest programP program
+            case parse programP "" program of
+              Left err -> print err
+              Right prog -> pp prog 0
