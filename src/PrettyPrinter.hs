@@ -45,24 +45,30 @@ instance PP Stmt where
         pp s (indent + 1)
 
 instance PP Expr where
-  pp e _ =
-    case e of
-      LitInt i -> putStr $ show i
-      LitBool b -> putStr $ show b
-      Name s -> putStr s
-      Plus e1 e2 -> pp e1 0 >> putStr " + " >> pp e2 0
-      Minus e1 e2 -> pp e1 0 >> putStr " - " >> pp e2 0
-      And e1 e2 -> pp e1 0 >> putStr " ∩ " >> pp e2 0
-      Or e1 e2 -> pp e1 0 >> putStr " ∪ " >> pp e2 0
-      Imply e1 e2 -> pp e1 0 >> putStr " ~> " >> pp e2 0
-      Lt e1 e2 -> pp e1 0 >> putStr " < " >> pp e2 0
-      Le e1 e2 -> pp e1 0 >> putStr " <= " >> pp e2 0
-      Eq e1 e2 -> pp e1 0 >> putStr " = " >> pp e2 0
-      ArrayAccess s e -> putStr (s ++ "[") >> pp e 0 >> putStr "]"
-      Not e -> putStr "~" >> pp e 0
-      Forall (BVar s t) e -> do
-        putStr ("forall " ++ s) >> pp t 0
-        putStr " :: " >> pp e 0
+  pp (LitInt i) _ = putStr $ show i
+  pp (LitBool b) _ = putStr $ show b
+  pp (Name s) _ = putStr s
+  pp (Plus e1 e2) _ = pp e1 0 >> putStr " + " >> pp e2 0
+  pp (Minus e1 e2) _ = pp e1 0 >> putStr " - " >> pp e2 0
+  pp (And e1 e2) _ = pp e1 0 >> putStr " ∩ " >> pp e2 0
+  pp (Or e1 e2) _ = pp e1 0 >> putStr " ∪ " >> pp e2 0
+  pp (Imply e1 e2) _ = pp e1 0 >> putStr " ~> " >> pp e2 0
+  pp (Lt e1 e2) _ = pp e1 0 >> putStr " < " >> pp e2 0
+  pp (Le e1 e2) _ = pp e1 0 >> putStr " <= " >> pp e2 0
+  pp (Eq e1 e2) _ = pp e1 0 >> putStr " = " >> pp e2 0
+  pp (ArrayAccess s e) _ = putStr (s ++ "[") >> pp e 0 >> putStr "]"
+  pp (Not e) _ = putStr "~" >> pp e 0
+  pp (Forall (BVar s t) e) _ = do
+    putStr ("(forall " ++ s) >> pp t 0
+    putStr " :: " >> pp e 0 >> putStr ")"
+  pp (Cond g et ef) _ = do
+    pp g 0
+    putStr " -> " >> pp et 0
+    putStr " | " >> pp ef 0
+  pp (RepBy arr index rep) _ = do
+    pp arr 0
+    putStr "(" >> pp index 0
+    putStr " repby " >> pp rep 0 >> putStr ")"
 
 instance PP Type where
   pp t _ = putStr $ ":" ++ show t

@@ -7,7 +7,6 @@ data Program = Prog { name :: String
                     }
                     deriving Show
 
-
 data Stmt = Skip
           | Assert Expr
           | Assume Expr
@@ -17,6 +16,9 @@ data Stmt = Skip
           | While Expr Stmt
           | VarStmt [String] Stmt
           deriving Show
+
+-- data AsgTarget = AsgName String
+--                | AsgArray String Expr
 
 data BoundVariable = BVar String Type
   deriving Show
@@ -35,6 +37,8 @@ data Expr = LitInt Int
           | ArrayAccess String Expr
           | Not Expr
           | Forall BoundVariable Expr
+          | Cond Expr Expr Expr
+          | RepBy Expr Expr Expr
           deriving Show
 
 data PrimitiveType = Boolean | Integer

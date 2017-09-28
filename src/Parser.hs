@@ -2,6 +2,7 @@
 
 module Parser (programP) where
 
+import Control.Monad
 import Text.Parsec
 import Text.Parsec.Char
 import Text.Parsec.String
@@ -17,6 +18,7 @@ import AST
 test p = parse (p <* eof) ""
 lexeme p = spaces *> p <* spaces
 str = lexeme . string
+commas l = l `sepBy1` string ", "
 (<~) p s = p <* lexeme (string s)
 (~>) s p = lexeme (string s) *> p
 parens = Tokens.parens haskell
@@ -38,9 +40,9 @@ hoareProgramP = do
 
 simpleProgramP :: Parser Program
 simpleProgramP = do
-  name <- nameP <~ "("
-  inputs <- (nameP `sepBy` char ',') <~ "|"
-  outputs <- (nameP `sepBy` char ',') <~ ")"
+  name <- programNameP <~ "("
+  inputs <- commas nameP <~ "|"
+  outputs <- commas nameP <~ ")"
   stmt <- stmtP
   return $ Prog name inputs outputs stmt
 
@@ -66,10 +68,30 @@ assumeP :: Parser Stmt
 assumeP = Assume <$> "assume" ~> exprP
 
 asgP :: Parser Stmt
-asgP = do
-  lhs <- nameP `sepBy1` char ','
-  rhs <- ":=" ~> (exprP `sepBy1` char ',')
-  return $ Asg lhs rhs
+asgP = try arrayAsgP <|> simulAsgP
+
+arrayAsgP :: Parser Stmt
+arrayAsgP = do
+  arr <- nameP <~ "["
+  index <- exprP <~ "]"
+  rhs <- ":=" ~> exprP
+  return $ Asg [arr] [RepBy (Name arr) index rhs]
+
+simulAsgP :: Parser Stmt
+simulAsgP = do
+  targets <- commas nameP <~ ":="
+  programAsgP targets <|> simpleAsgP targets
+
+programAsgP :: [String] -> Parser Stmt
+programAsgP targets = do
+  progName <- programNameP <~ "("
+  inputs <- commas exprP <~ ")"
+  return Skip
+
+simpleAsgP :: [String] -> Parser Stmt
+simpleAsgP targets = do
+  rhs <- commas exprP
+  return $ Asg targets rhs
 
 iteP :: Parser Stmt
 iteP = do
@@ -92,7 +114,10 @@ varStmtP = do
 
 -- Expressions
 exprP :: Parser Expr
-exprP = buildExpressionParser table term <?> "expression"
+exprP =
+  try condP <|>
+  try repbyP <|>
+  buildExpressionParser table term <?> "expression"
   where table = [ [infix_ "+" Plus, infix_ "-" Minus]
                 , [infix_ "<" Lt, infix_ "<=" Le, infix_ "=" Eq]
                 , [prefix "~" Not]
@@ -110,6 +135,20 @@ bvarP = lexeme $ do
   name <- nameP
   typ <- ":" ~> typeP
   return $ BVar name typ
+
+repbyP :: Parser Expr
+repbyP = do
+  arr <- "[" ~> exprP
+  index <- "|" ~> exprP
+  rep <- "->" ~> exprP <~ "]"
+  return $ RepBy arr index rep
+
+condP :: Parser Expr
+condP = do
+  g <- "?" ~> exprP
+  et <- "->" ~> exprP
+  ef <- "|" ~> exprP
+  return $ Cond g et ef
 
 forallP :: Parser Expr
 forallP = "(" ~> (forall <|> exists) <~ ")"
@@ -134,8 +173,11 @@ primitiveP = lexeme $
   (LitBool <$> boolP) <|>
   (Name <$> nameP)
 
+programNameP :: Parser String
+programNameP = many1 $ upper <|> char '_'
+
 nameP :: Parser String
-nameP = lexeme $ many1 letter
+nameP = many1 $ lower <|> char '_'
 
 numberP :: Parser Int
 numberP = (\n -> read n :: Int) <$> many1 digit
