@@ -1,7 +1,7 @@
 { (exists x:int :: x <= 0 ~> x - 1 < (? true -> true | true)) }
-ADD(x, y | z)
+ADD(x, y | z, w)
     skip;
+    a := 5;
     a := [a | 2 -> (100 + 100)];
-    a[1 + 1] := (100 + 100);
-    a, b := ADD(a, 10)
+    a[1 + 1] := (100 + 100)
 { z <= 0 }

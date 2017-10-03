@@ -29,7 +29,7 @@ prefix op f = Prefix (reserved op >> return f)
 
 -- Programs
 programP :: Parser Program
-programP = hoareProgramP <|> simpleProgramP
+programP = (hoareProgramP <|> simpleProgramP) <* eof
 
 hoareProgramP :: Parser Program
 hoareProgramP = do
@@ -80,16 +80,6 @@ arrayAsgP = do
 simulAsgP :: Parser Stmt
 simulAsgP = do
   targets <- commas nameP <~ ":="
-  programAsgP targets <|> simpleAsgP targets
-
-programAsgP :: [String] -> Parser Stmt
-programAsgP targets = do
-  progName <- programNameP <~ "("
-  inputs <- commas exprP <~ ")"
-  return Skip
-
-simpleAsgP :: [String] -> Parser Stmt
-simpleAsgP targets = do
   rhs <- commas exprP
   return $ Asg targets rhs
 

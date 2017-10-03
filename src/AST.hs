@@ -17,9 +17,6 @@ data Stmt = Skip
           | VarStmt [String] Stmt
           deriving Show
 
--- data AsgTarget = AsgName String
---                | AsgArray String Expr
-
 data BoundVariable = BVar String Type
   deriving Show
 

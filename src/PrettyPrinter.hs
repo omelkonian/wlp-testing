@@ -14,7 +14,7 @@ class PP a where
 instance PP Program where
   pp prog indent = do
     put indent ["Prog: " ++ name prog ++ "("
-               , commas (inputs prog) ++ "|"
+               , commas (inputs prog) ++ " | "
                , commas (outputs prog) ++ ")"]
     ln
     pp (body prog) (indent + 1)
