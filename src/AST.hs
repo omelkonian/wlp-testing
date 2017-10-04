@@ -5,7 +5,7 @@ data Program = Prog { name :: String
                     , outputs :: [String]
                     , body :: Stmt
                     }
-                    deriving Show
+                    -- deriving Show
 
 data Stmt = Skip
           | Assert Expr
@@ -15,7 +15,7 @@ data Stmt = Skip
           | Ite Expr Stmt Stmt
           | While Expr Stmt
           | VarStmt [String] Stmt
-          deriving Show
+          -- deriving Show
 
 data BoundVariable = BVar String Type
   deriving Show
@@ -25,8 +25,6 @@ data Expr = LitInt Int
           | Name String
           | Plus Expr Expr
           | Minus Expr Expr
-          | And Expr Expr
-          | Or Expr Expr
           | Imply Expr Expr
           | Lt Expr Expr
           | Le Expr Expr
@@ -47,3 +45,22 @@ data Type = Prim PrimitiveType | Array PrimitiveType
 hoarify :: Program -> Expr -> Expr -> Program
 hoarify prog pre post =
   prog { body = Seq (Assume pre) (Seq (body prog) (Assert post))}
+
+
+instance Show Program where
+  show prog =
+    "=============" ++ name prog ++ "================\n" ++
+    show (body prog) ++
+    "===============================================\n"
+instance Show Stmt where
+  show Skip = "Skip"
+  show (Assert e) = "Assert (" ++ show e ++ " )"
+  show (Assume e) = "Assume (" ++ show e ++ ")"
+  show (Asg targets exprs) = show targets ++ " := " ++ show exprs
+  show (Seq s1 s2) = show s1 ++ "; " ++ show s2
+  show (Ite g st sf) =
+    "if (" ++ show g ++ ") then " ++ show st ++ " else " ++ show sf
+  show (While g body) =
+    "while (" ++ show g ++ ") do\n" ++ show body
+  show (VarStmt vars body) =
+    "var " ++ show vars ++ " in " ++ show body

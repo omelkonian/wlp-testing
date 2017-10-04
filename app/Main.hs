@@ -3,9 +3,11 @@ module Main where
 import System.IO
 import System.Environment (getArgs)
 import Control.Monad (unless)
+import Data.Foldable (for_)
 import Text.Parsec (parse, parseTest)
 import Parser (programP)
 import PrettyPrinter (pp)
+import Paths (getAllPaths)
 
 interactive = False
 
@@ -24,4 +26,10 @@ main = do
     else do program <- readFile inputFile
             case parse programP "" program of
               Left err -> print err
-              Right prog -> pp prog 0
+              Right prog -> do
+                print prog
+                for_ (getAllPaths 20 prog) (\s -> do
+                  putStrLn ""
+                  putStrLn "=================="
+                  print s)
+                -- pp prog 0
