@@ -9,10 +9,10 @@ To execute interactively: `stack exec -- wlp-test-exe -i`
 To execute with input file: `stack exec -- wlp-test-exe <input_file>`
 
 # TODO
+- [x] Path calculation
+  * `calculatePaths :: Program -> [ProgramPath]`
 - [ ] WLP Transformer
   * `wlp :: Program -> Expr`
-- [ ] Path calculation
-  * `calculatePaths :: Program -> [ProgramPath]`
 - [ ] Normalization on Imply
   * `P ==> P' ==> Q` ~> `P /\ P' ==> Q`
 - [ ] Predicate to arithmetic intervals
