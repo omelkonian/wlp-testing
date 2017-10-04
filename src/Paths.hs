@@ -1,5 +1,6 @@
 module Paths where
 
+import Prelude hiding (and, or)
 import Control.Monad
 import AST
 import Debug.Trace
@@ -19,16 +20,19 @@ getPaths d (Ite g st sf) = pathT ++ pathF
 getPaths d (Seq s1 s2) =
   [Seq s1' s2' | [s1', s2'] <- getMultiPaths d [s1, s2]]
 
-getPaths 1 (While g _) = [Assume $ Not g]
-getPaths d (While g body) =
+getPaths 1 (While inv g _) = [assume inv g]
+getPaths d (While inv g body) =
   [ foldr1 Seq $ insertConds $ concat paths
   | unrolls <- [1..quot d 2]
   , let paths = getMultiPaths (d - 2) (replicate unrolls body)
   , not $ null paths
-  , let insertConds = foldr (\s -> (++) [Assume g, s]) [Assume $ Not g]
+  , let insertConds = foldr (\s -> (++) [assume inv g, s]) [assume inv (Not g)]
   ]
 
 getPaths d stmt = [stmt | d == 1]
+
+assume Nothing q = Assume q
+assume (Just p) q = Assume $ and p q
 
 getMultiPaths :: Int -> [Stmt] -> [[Stmt]]
 getMultiPaths d stmts =

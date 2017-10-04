@@ -13,9 +13,10 @@ class PP a where
 
 instance PP Program where
   pp prog indent = do
-    put indent ["Prog: " ++ name prog ++ "("
+    put indent [name prog ++ ": ("
                , commas (inputs prog) ++ " | "
-               , commas (outputs prog) ++ ")"]
+               , commas (outputs prog) ++ ")",
+               "\n===============================\n"]
     ln
     pp (body prog) (indent + 1)
 
@@ -37,7 +38,7 @@ instance PP Stmt where
         pp s1 (indent + 1) >> ln
         putStrLn "else"
         pp s2 (indent + 1)
-      While e s -> do
+      While _ e s -> do
         putStrLn $ "while " ++ show e ++ " do"
         pp s (indent + 1)
       VarStmt vars s -> do
@@ -50,8 +51,6 @@ instance PP Expr where
   pp (Name s) _ = putStr s
   pp (Plus e1 e2) _ = pp e1 0 >> putStr " + " >> pp e2 0
   pp (Minus e1 e2) _ = pp e1 0 >> putStr " - " >> pp e2 0
-  pp (And e1 e2) _ = pp e1 0 >> putStr " ∩ " >> pp e2 0
-  pp (Or e1 e2) _ = pp e1 0 >> putStr " ∪ " >> pp e2 0
   pp (Imply e1 e2) _ = pp e1 0 >> putStr " ~> " >> pp e2 0
   pp (Lt e1 e2) _ = pp e1 0 >> putStr " < " >> pp e2 0
   pp (Le e1 e2) _ = pp e1 0 >> putStr " <= " >> pp e2 0

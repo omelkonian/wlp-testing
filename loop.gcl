@@ -1,0 +1,8 @@
+LOOP(x|y)
+    x := 5;
+    {0} while (1) do
+      if (2) then
+        skip
+      else
+        skip; skip
+    end

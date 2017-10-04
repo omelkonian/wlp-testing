@@ -1,6 +1,6 @@
 SIMPLE(x|y)
     skip;
-    while 0 do
+    {x < 0} while 0 do
       if 1 then
         skip
       else

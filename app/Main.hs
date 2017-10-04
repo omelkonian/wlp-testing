@@ -9,11 +9,10 @@ import Parser (programP)
 import PrettyPrinter (pp)
 import Paths (getAllPaths)
 
-interactive = False
 
 main :: IO ()
 main = do
-  inputFile <- head <$> getArgs
+  [inputFile, depth] <- getArgs
   if inputFile == "-i"
     then do hSetBuffering stdout NoBuffering
             putStr "λ> "
@@ -27,9 +26,8 @@ main = do
             case parse programP "" program of
               Left err -> print err
               Right prog -> do
-                print prog
-                for_ (getAllPaths 20 prog) (\s -> do
+                pp prog 0
+                for_ (getAllPaths (read depth) prog) (\s -> do -- (`pp` 0)
                   putStrLn ""
                   putStrLn "=================="
-                  print s)
-                -- pp prog 0
+                  pp s 0)

@@ -2,6 +2,7 @@
 
 module Parser (programP) where
 
+import Prelude hiding (and, or)
 import Control.Monad
 import Text.Parsec
 import Text.Parsec.Char
@@ -31,7 +32,7 @@ prefix op f = Prefix (reserved op >> return f)
 programP :: Parser Program
 programP = (hoareProgramP <|> simpleProgramP) <* eof
 
-hoareProgramP :: Parser Program
+-- hoareProgramP :: Parser Program
 hoareProgramP = do
   pre <- "{" ~> exprP <~ "}"
   prog <- simpleProgramP
@@ -92,9 +93,10 @@ iteP = do
 
 whileP :: Parser Stmt
 whileP = do
+  invariant <- optionMaybe $ "{" ~> exprP <~ "}"
   expr <- "while" ~> exprP
   stmt <- "do" ~> stmtP <~ "end"
-  return $ While expr stmt
+  return $ While invariant expr stmt
 
 varStmtP :: Parser Stmt
 varStmtP = do
@@ -111,8 +113,8 @@ exprP =
   where table = [ [infix_ "+" Plus, infix_ "-" Minus]
                 , [infix_ "<" Lt, infix_ "<=" Le, infix_ "=" Eq]
                 , [prefix "~" Not]
-                , [infix_ "/\\" And]
-                , [infix_ "\\/" Or]
+                , [infix_ "/\\" and]
+                , [infix_ "\\/" or]
                 , [infix_ "~>" Imply]
                 ]
         term = try (parens exprP) <|>

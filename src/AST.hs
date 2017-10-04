@@ -13,7 +13,7 @@ data Stmt = Skip
           | Asg [String] [Expr]
           | Seq Stmt Stmt
           | Ite Expr Stmt Stmt
-          | While Expr Stmt
+          | While (Maybe Expr) Expr Stmt
           | VarStmt [String] Stmt
           -- deriving Show
 
@@ -46,6 +46,8 @@ hoarify :: Program -> Expr -> Expr -> Program
 hoarify prog pre post =
   prog { body = Seq (Assume pre) (Seq (body prog) (Assert post))}
 
+and p q = Not (Imply p $ Not q)
+or p q = Imply (Imply p q) q
 
 instance Show Program where
   show prog =
@@ -60,7 +62,7 @@ instance Show Stmt where
   show (Seq s1 s2) = show s1 ++ "; " ++ show s2
   show (Ite g st sf) =
     "if (" ++ show g ++ ") then " ++ show st ++ " else " ++ show sf
-  show (While g body) =
+  show (While _ g body) =
     "while (" ++ show g ++ ") do\n" ++ show body
   show (VarStmt vars body) =
     "var " ++ show vars ++ " in " ++ show body
