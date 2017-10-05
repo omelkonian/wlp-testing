@@ -19,12 +19,12 @@ To execute with input file: `stack exec -- wlp-test-exe <input_file>`
   * `P1(x, y) /\ P2(y) /\ P3(x)` ~> `[Range]`
 - [ ] Program testing
 - [ ] Extensions
-  * [ ] Array Assignment
+  * [x] Array Assignment
     - add `repby` to `Expr`
     - add `g -> t | f` to `Expr`
   * [ ] Program call
     - add `vars := prog_name([Expression])` to `Stmt`
-  * [ ] Loop invariants
+  * [x] Loop invariants
     - add `{ invariant } while ...` to `Stmt`
     - utilize extra logical information
 - [ ] Report
