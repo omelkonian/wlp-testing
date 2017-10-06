@@ -3,11 +3,15 @@ module Main where
 import System.IO
 import System.Environment (getArgs)
 import Control.Monad (unless)
+import Control.Monad.State (evalState)
 import Data.Foldable (for_)
 import Text.Parsec (parse, parseTest)
 import Parser (programP)
 import PrettyPrinter (pp)
 import Paths (getAllPaths)
+import Renaming (rename)
+import Wlp (wlp)
+import AST
 
 
 main :: IO ()
@@ -30,4 +34,12 @@ main = do
                 for_ (getAllPaths (read depth) prog) (\s -> do -- (`pp` 0)
                   putStrLn ""
                   putStrLn "=================="
-                  pp s 0)
+                  pp s 0
+                  putStrLn ""
+                  putStrLn "$$$$$$$$$$$$$$$$$$"
+                  let renamed = evalState (rename s) 0
+                  pp renamed 0
+                  putStrLn ""
+                  putStrLn "******************"
+                  let wlp_ = wlp renamed (LitBool True)
+                  pp wlp_ 0)

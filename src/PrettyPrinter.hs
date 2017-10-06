@@ -30,19 +30,19 @@ instance PP Stmt where
         put indent [commas asgs, " := "]
         forM_ (init es) (\e -> pp e 0 >> putStr ", ")
         pp (last es) 0
-      Seq s1 s2 -> do
-        pp s1 indent >> putStrLn ";"
-        pp s2 indent
+      Seq s1 s2 ->
+        pp s1 indent >> putStrLn ";" >> pp s2 indent
       Ite e s1 s2 -> do
-        putStrLn $ "if " ++ show e ++ " then"
+        put indent ["if (", show e, ") then"] >> ln
         pp s1 (indent + 1) >> ln
-        putStrLn "else"
+        put indent ["else"] >> ln
         pp s2 (indent + 1)
       While _ e s -> do
-        putStrLn $ "while " ++ show e ++ " do"
-        pp s (indent + 1)
+        put indent ["while (", show e, ") do"] >> ln
+        pp s (indent + 1) >> ln
+        put indent ["end"]
       VarStmt vars s -> do
-        putStrLn $ "var " ++ commas vars ++ " in"
+        put indent ["var (", commas vars, ") in"] >> ln
         pp s (indent + 1)
 
 instance PP Expr where
@@ -51,19 +51,17 @@ instance PP Expr where
   pp (Name s) _ = putStr s
   pp (Plus e1 e2) _ = pp e1 0 >> putStr " + " >> pp e2 0
   pp (Minus e1 e2) _ = pp e1 0 >> putStr " - " >> pp e2 0
-  pp (Imply e1 e2) _ = pp e1 0 >> putStr " ~> " >> pp e2 0
+  pp (Imply e1 e2) _ = putStr "(" >> pp e1 0 >> putStr " => " >> pp e2 0 >> putStr ")"
   pp (Lt e1 e2) _ = pp e1 0 >> putStr " < " >> pp e2 0
-  pp (Le e1 e2) _ = pp e1 0 >> putStr " <= " >> pp e2 0
   pp (Eq e1 e2) _ = pp e1 0 >> putStr " = " >> pp e2 0
   pp (ArrayAccess s e) _ = putStr (s ++ "[") >> pp e 0 >> putStr "]"
-  pp (Not e) _ = putStr "~" >> pp e 0
   pp (Forall (BVar s t) e) _ = do
     putStr ("(forall " ++ s) >> pp t 0
     putStr " :: " >> pp e 0 >> putStr ")"
   pp (Cond g et ef) _ = do
-    pp g 0
+    putStr "(" >> pp g 0
     putStr " -> " >> pp et 0
-    putStr " | " >> pp ef 0
+    putStr " | " >> pp ef 0 >> putStr ")"
   pp (RepBy arr index rep) _ = do
     pp arr 0
     putStr "(" >> pp index 0

@@ -11,7 +11,7 @@ To execute with input file: `stack exec -- wlp-test-exe <input_file>`
 # TODO
 - [x] Path calculation
   * `calculatePaths :: Program -> [ProgramPath]`
-- [ ] WLP Transformer
+- [x] WLP Transformer
   * `wlp :: Program -> Expr`
 - [ ] Normalization on Imply
   * `P ==> P' ==> Q` ~> `P /\ P' ==> Q`

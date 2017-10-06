@@ -2,7 +2,6 @@
 
 module Parser (programP) where
 
-import Prelude hiding (and, or)
 import Control.Monad
 import Text.Parsec
 import Text.Parsec.Char
@@ -110,12 +109,12 @@ exprP =
   try condP <|>
   try repbyP <|>
   buildExpressionParser table term <?> "expression"
-  where table = [ [infix_ "+" Plus, infix_ "-" Minus]
-                , [infix_ "<" Lt, infix_ "<=" Le, infix_ "=" Eq]
-                , [prefix "~" Not]
-                , [infix_ "/\\" and]
-                , [infix_ "\\/" or]
-                , [infix_ "~>" Imply]
+  where table = [ [ infix_ "+" Plus, infix_ "-" Minus ]
+                , [ infix_ "<" Lt, infix_ "=" Eq, infix_ "<=" le_ ]
+                , [ prefix "~" (`Imply` (LitBool False)) ]
+                , [ infix_ "/\\" and_ ]
+                , [ infix_ "\\/" or_ ]
+                , [ infix_ "=>" Imply ]
                 ]
         term = try (parens exprP) <|>
                try forallP <|>
@@ -151,7 +150,7 @@ forallP = "(" ~> (forall <|> exists) <~ ")"
         exists = do
          bvar <- "exists" ~> bvarP
          expr <- "::" ~> exprP
-         return $ Not (Forall bvar (Not expr))
+         return $ not_ (Forall bvar (not_ expr))
 
 arrayAccessP :: Parser Expr
 arrayAccessP = do
@@ -172,7 +171,9 @@ nameP :: Parser String
 nameP = many1 $ lower <|> char '_'
 
 numberP :: Parser Int
-numberP = (\n -> read n :: Int) <$> many1 digit
+numberP = do
+  n <- Tokens.integer haskell
+  return $ fromInteger n
 
 boolP :: Parser Bool
 boolP = (True <$ str "true") <|> (False <$ str "false")

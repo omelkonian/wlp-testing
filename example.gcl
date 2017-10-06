@@ -1,0 +1,7 @@
+{ -1 <= x }
+E(x | y)
+  while (0 < x) do
+    x := x + 1;
+    y:=x
+  end
+{ y = 0 }
