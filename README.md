@@ -1,5 +1,7 @@
 # WLP-based Automated Testing
 
+Prerequisites: Back-end SMT solver already installed (e.g. Z3)
+
 To setup: `stack setup`
 
 To build: `stack build`
@@ -13,11 +15,13 @@ To execute with input file: `stack exec -- wlp-test-exe <input_file>`
   * `calculatePaths :: Program -> [ProgramPath]`
 - [x] WLP Transformer
   * `wlp :: Program -> Expr`
-- [ ] Normalization on Imply
+- [x] Normalization on Imply
   * `P ==> P' ==> Q` ~> `P /\ P' ==> Q`
-- [ ] Predicate to arithmetic intervals
+- [x] Predicate to arithmetic intervals
   * `P1(x, y) /\ P2(y) /\ P3(x)` ~> `[Range]`
-- [ ] Program testing
+- [x] Program testing
+  * [x] Base implementation
+  * [ ] Arrays
 - [ ] Extensions
   * [x] Array Assignment
     - add `repby` to `Expr`

@@ -40,7 +40,6 @@ hoarify prog pre post =
   prog { body = Seq (Assume pre) (Seq (body prog) (Assert post))}
 
 -- Shorthands
--- not_ p = Imply p (LitBool False)
 and_ p q = Imply p $ Not q
 or_ p q = Imply (Imply p q) q
 le_ e1 e2 = or_ (Lt e1 e2) (Eq e1 e2)

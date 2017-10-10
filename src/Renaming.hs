@@ -28,40 +28,27 @@ rename (VarStmt targets body) = do
   return $ VarStmt targets' (subst targets targets' body')
 rename _ = error "rename does not accept branching statements"
 
+rename1 cons e = do
+  e' <- renameE e
+  return $ cons e'
+rename2 cons e1 e2 = do
+  e1' <- renameE e1
+  e2' <- renameE e2
+  return $ cons e1' e2'
+rename3 cons e1 e2 e3 = do
+  e1' <- renameE e1
+  e2' <- renameE e2
+  e3' <- renameE e3
+  return $ cons e1' e2' e3'
 renameE :: Expr -> State Int Expr
-renameE (Plus e1 e2) = do
-  e1' <- renameE e1
-  e2' <- renameE e2
-  return $ Plus e1' e2'
-renameE (Minus e1 e2) = do
-  e1' <- renameE e1
-  e2' <- renameE e2
-  return $ Minus e1' e2'
-renameE (Imply e1 e2) = do
-  e1' <- renameE e1
-  e2' <- renameE e2
-  return $ Imply e1' e2'
-renameE (Lt e1 e2) = do
-  e1' <- renameE e1
-  e2' <- renameE e2
-  return $ Lt e1' e2'
-renameE (Eq e1 e2) = do
-  e1' <- renameE e1
-  e2' <- renameE e2
-  return $ Eq e1' e2'
-renameE (ArrayAccess v e) = do
-  e' <- renameE e
-  return $ ArrayAccess v e'
-renameE (Cond g et ef) = do
-  g' <- renameE g
-  et' <- renameE et
-  ef' <- renameE ef
-  return $ Cond g' et' ef'
-renameE (RepBy arr i e) = do
-  arr' <- renameE arr
-  i' <- renameE i
-  e' <- renameE e
-  return $ RepBy arr' i' e'
+renameE (Plus e1 e2) = rename2 Plus e1 e2
+renameE (Minus e1 e2) = rename2 Minus e1 e2
+renameE (Imply e1 e2) = rename2 Imply e1 e2
+renameE (Lt e1 e2) = rename2 Lt e1 e2
+renameE (Eq e1 e2) = rename2 Eq e1 e2
+renameE (ArrayAccess v e) = rename1 (ArrayAccess v) e
+renameE (Cond g et ef) = rename3 Cond g et ef
+renameE (RepBy arr i e) = rename3 RepBy arr i e
 renameE (Forall (BVar v typ) e) = do
   counter <- get
   put (counter + 1)

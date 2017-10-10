@@ -31,11 +31,11 @@ getVars' (RepBy arr i e) = getVars' arr ++ getVars' i ++ getVars' e
 getVars' _ = []
 
 genSMTVars :: [String] -> Symbolic VarMap
-genSMTVars vars = M.fromList <$> forM vars (\v -> do x <- sInteger v
-                                                     return (v, x))
+genSMTVars vars = do smtVars <- sIntegers vars
+                     return $ M.fromList $ zip vars smtVars
 
 toSmt :: VarMap -> Expr -> SInteger
-toSmt vars (LitInt i) = fromInteger $ toInteger i
+toSmt vars (LitInt i) = literal $ toInteger i
 toSmt vars (Name v) = fromMaybe (error "Inconsistent VarMap") (M.lookup v vars)
 toSmt vars (Plus e e') = toSmt vars e + toSmt vars e'
 toSmt vars (Minus e e') = toSmt vars e - toSmt vars e'
@@ -50,8 +50,8 @@ toSmtB vars (Lt e e') = toSmt vars e .< toSmt vars e'
 toSmtB vars (Forall _ e) = toSmtB vars e
 toSmtB _ _ = error "toSmtB cannot handle arrays yet"
 
-test :: [String] -> [Expr] -> Symbolic (Maybe ResultMap)
-test vars es = do
+checkAssumptions :: [String] -> [Expr] -> Symbolic (Maybe ResultMap)
+checkAssumptions vars es = do
   smtVars <- genSMTVars vars
   -- Contraints
   forM_ es (constrain . toSmtB smtVars)
@@ -63,6 +63,20 @@ test vars es = do
       Unsat -> return Nothing -- no solution!
       Sat   -> do res <- forM (M.toList smtVars) (\(v, x) -> do
                     xv <- getValue x
-                    io $ putStrLn $ "Solver returned: " ++ show (v, xv)
                     return (v, xv))
                   return $ Just $ M.fromList res
+
+
+
+checkGoal :: ResultMap -> Expr -> Symbolic ()
+checkGoal vars e = do
+  vMap <- forM (M.toList vars) (\(v, xv) -> do
+            x <- sInteger v
+            constrain $ x .== literal xv
+            return (v, x))
+  query $ do
+    let goal = toSmtB (M.fromList vMap) e
+    io $ putStrLn ("Checking " ++ show e)
+    result <- io $ putStr "Goal: " >> prove goal
+    io $ print result
+  return ()
