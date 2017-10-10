@@ -21,6 +21,7 @@ data Expr = LitInt Int
           | Plus Expr Expr
           | Minus Expr Expr
           | Imply Expr Expr
+          | Not Expr
           | Lt Expr Expr
           | Eq Expr Expr
           | ArrayAccess String Expr
@@ -39,8 +40,8 @@ hoarify prog pre post =
   prog { body = Seq (Assume pre) (Seq (body prog) (Assert post))}
 
 -- Shorthands
-not_ p = Imply p (LitBool False)
-and_ p q = Imply p $ not_ q
+-- not_ p = Imply p (LitBool False)
+and_ p q = Imply p $ Not q
 or_ p q = Imply (Imply p q) q
 le_ e1 e2 = or_ (Lt e1 e2) (Eq e1 e2)
 
@@ -67,11 +68,12 @@ instance Show Expr where
   show (LitInt i) = show i
   show (LitBool b) = show b
   show (Name s) = s
-  show (Plus e1 e2) = "(" ++ show e1 ++ " + " ++ show e2 ++ ")"
-  show (Minus e1 e2) = "(" ++ show e1 ++ " - " ++ show e2 ++ ")"
+  show (Plus e1 e2) = show e1 ++ " + " ++ show e2
+  show (Minus e1 e2) = show e1 ++ " - " ++ show e2
   show (Imply p q) = "(" ++ show p ++ " => " ++ show q ++ ")"
-  show (Lt e1 e2) = "(" ++ show e1 ++ " < " ++ show e2 ++ ")"
-  show (Eq e1 e2) = "(" ++ show e1 ++ " = " ++ show e2 ++ ")"
+  show (Not e) = "~ (" ++ show e ++ ")"
+  show (Lt e1 e2) = show e1 ++ " < " ++ show e2
+  show (Eq e1 e2) = show e1 ++ " = " ++ show e2
   show (ArrayAccess arr e) = arr ++ "[" ++ show e ++ "]"
   show (Forall bvar e) =
     "(forall " ++ show bvar ++ " :: " ++ show e ++ ")"

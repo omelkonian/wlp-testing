@@ -12,24 +12,23 @@ class PP a where
   pp :: a -> Int -> IO ()
 
 instance PP Program where
-  pp prog indent = do
-    put indent [name prog ++ ": ("
-               , commas (inputs prog) ++ " | "
-               , commas (outputs prog) ++ ")",
-               "\n===============================\n"]
-    ln
-    pp (body prog) (indent + 1)
+  pp prog _ = do
+    ln >> putStrLn "==============================="
+    put 0 ["\t", name prog, ": (",
+           commas (inputs prog), " | ", commas (outputs prog), ")"] >> ln
+    putStrLn "==============================="
+    pp (body prog) 1 >> ln >> ln
 
 instance PP Stmt where
   pp stmt indent =
     case stmt of
       Skip -> put indent ["skip"]
-      Assert e -> put indent ["assert "] >> pp e 0
-      Assume e -> put indent ["assume "] >> pp e 0
+      Assert e -> put indent ["assert "] >> putStr (show e)
+      Assume e -> put indent ["assume "] >> putStr (show e)
       Asg asgs es -> do
         put indent [commas asgs, " := "]
-        forM_ (init es) (\e -> pp e 0 >> putStr ", ")
-        pp (last es) 0
+        forM_ (init es) (\e -> putStr $ show e ++ ", ")
+        putStr $ show (last es)
       Seq s1 s2 ->
         pp s1 indent >> putStrLn ";" >> pp s2 indent
       Ite e s1 s2 -> do
@@ -46,15 +45,10 @@ instance PP Stmt where
         pp s (indent + 1)
 
 instance PP Expr where
-  pp (LitInt i) _ = putStr $ show i
-  pp (LitBool b) _ = putStr $ show b
-  pp (Name s) _ = putStr s
-  pp (Plus e1 e2) _ = pp e1 0 >> putStr " + " >> pp e2 0
-  pp (Minus e1 e2) _ = pp e1 0 >> putStr " - " >> pp e2 0
-  pp (Imply e1 e2) _ = putStr "(" >> pp e1 0 >> putStr " => " >> pp e2 0 >> putStr ")"
-  pp (Lt e1 e2) _ = pp e1 0 >> putStr " < " >> pp e2 0
-  pp (Eq e1 e2) _ = pp e1 0 >> putStr " = " >> pp e2 0
-  pp (ArrayAccess s e) _ = putStr (s ++ "[") >> pp e 0 >> putStr "]"
+  pp (Imply e1 e2) i = do
+    pp e1 i >> putStr " => (" >> ln
+    pp e2 (i + 1) >> ln
+    put i [")"]
   pp (Forall (BVar s t) e) _ = do
     putStr ("(forall " ++ s) >> pp t 0
     putStr " :: " >> pp e 0 >> putStr ")"
@@ -62,10 +56,7 @@ instance PP Expr where
     putStr "(" >> pp g 0
     putStr " -> " >> pp et 0
     putStr " | " >> pp ef 0 >> putStr ")"
-  pp (RepBy arr index rep) _ = do
-    pp arr 0
-    putStr "(" >> pp index 0
-    putStr " repby " >> pp rep 0 >> putStr ")"
+  pp e i = put i [show e]
 
 instance PP Type where
   pp t _ = putStr $ ":" ++ show t

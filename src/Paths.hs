@@ -12,18 +12,18 @@ getPaths d (VarStmt ids s) =
 
 getPaths d (Ite g st sf) = pathT ++ pathF
   where pathT = [Seq (Assume g) st' | st' <- getPaths (d - 1) st]
-        pathF = [Seq (Assume $ not_ g) sf' | sf' <- getPaths (d - 1) sf]
+        pathF = [Seq (Assume $ Not g) sf' | sf' <- getPaths (d - 1) sf]
 
 getPaths d (Seq s1 s2) =
   [Seq s1' s2' | [s1', s2'] <- getMultiPaths d [s1, s2]]
 
-getPaths 1 (While inv g _) = [assume inv (not_ g)]
+getPaths 1 (While inv g _) = [assume inv (Not g)]
 getPaths d (While inv g body) =
   [ foldr1 Seq $ insertConds $ concat paths
   | unrolls <- [1..quot d 2]
   , let paths = getMultiPaths (d - 2) (replicate unrolls body)
   , not $ null paths
-  , let insertConds = foldr (\s -> (++) [assume inv g, s]) [assume inv (not_ g)]
+  , let insertConds = foldr (\s -> (++) [assume inv g, s]) [assume inv (Not g)]
   ]
 
 getPaths d stmt = [stmt | d == 1]

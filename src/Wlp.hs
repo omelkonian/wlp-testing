@@ -22,6 +22,7 @@ subst :: [String] -> [Expr] -> Expr -> Expr
 subst ts es (Plus e1 e2) = Plus (subst ts es e1) (subst ts es e2)
 subst ts es (Minus e1 e2) = Minus (subst ts es e1) (subst ts es e2)
 subst ts es (Imply e1 e2) = Imply (subst ts es e1) (subst ts es e2)
+subst ts es (Not e) = Not (subst ts es e)
 subst ts es (Lt e1 e2) = Lt (subst ts es e1) (subst ts es e2)
 subst ts es (Eq e1 e2) = Eq (subst ts es e1) (subst ts es e2)
 subst ts es (ArrayAccess v e) = ArrayAccess v (subst ts es e)

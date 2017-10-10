@@ -111,7 +111,7 @@ exprP =
   buildExpressionParser table term <?> "expression"
   where table = [ [ infix_ "+" Plus, infix_ "-" Minus ]
                 , [ infix_ "<" Lt, infix_ "=" Eq, infix_ "<=" le_ ]
-                , [ prefix "~" (`Imply` (LitBool False)) ]
+                , [ prefix "~" Not]
                 , [ infix_ "/\\" and_ ]
                 , [ infix_ "\\/" or_ ]
                 , [ infix_ "=>" Imply ]
@@ -150,7 +150,7 @@ forallP = "(" ~> (forall <|> exists) <~ ")"
         exists = do
          bvar <- "exists" ~> bvarP
          expr <- "::" ~> exprP
-         return $ not_ (Forall bvar (not_ expr))
+         return $ Not (Forall bvar (Not expr))
 
 arrayAccessP :: Parser Expr
 arrayAccessP = do
