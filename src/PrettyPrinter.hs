@@ -49,8 +49,8 @@ instance PP Expr where
     pp e1 i >> putStr " => (" >> ln
     pp e2 (i + 1) >> ln
     put i [")"]
-  pp (Forall (BVar s t) e) _ = do
-    putStr ("(forall " ++ s) >> pp t 0
+  pp (Forall vs e) _ = do
+    putStr $ "(forall " ++ show vs
     putStr " :: " >> pp e 0 >> putStr ")"
   pp (Cond g et ef) _ = do
     putStr "(" >> pp g 0

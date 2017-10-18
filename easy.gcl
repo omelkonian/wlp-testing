@@ -1,6 +1,6 @@
-{ ~ x < 0 }
+{ x >= 0 }
 SIMPLE(x|y)
-    while (~ x < 0) do
+    while (x >= 0) do
       if (x = 0) then
         x := x - 1
       else

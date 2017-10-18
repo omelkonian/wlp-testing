@@ -41,8 +41,8 @@ main = do
 
         putStrLn "****** GOAL *******"
         let (assumptions, goal) = splitAssumptions wlp_
-        print assumptions
-        print goal
+        putStr "Assumptions: " >> print assumptions
+        putStr "Goal: " >> print goal
         putStrLn "*******************" >> ln
 
         putStrLn "^^^^^^ SAT ^^^^^^"
@@ -50,7 +50,9 @@ main = do
         solution <- runSMT $ checkAssumptions vars assumptions
         putStrLn $ "Model: " ++ show solution
         case solution of
-          Just result -> runSMT $ checkGoal result goal
+          Just result -> do
+            res <- runSMT $ checkGoal result goal
+            putStrLn $ if res then "Pass" else "Fail"
           Nothing -> putStrLn "Pass" -- no model for assumptions, so no relevant case
         putStrLn "^^^^^^^^^^^^^^^^^^^" >> ln
         )

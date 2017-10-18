@@ -34,8 +34,8 @@ subst ts es (Name x) =
   case elemIndex x ts of
     Just i -> es !! i
     Nothing -> Name x
-subst ts es (Forall (BVar v typ) e) =
-  Forall (BVar v typ) e'
+subst ts es (Forall vs e) =
+  Forall vs e'
   where e' = subst ts' es' e
-        (ts', es') = unzip $ filter (\(t, _) -> t /= v) (zip ts es)
+        (ts', es') = unzip $ filter (\(t, _) -> notElem t vs) (zip ts es)
 subst _ _ q = q

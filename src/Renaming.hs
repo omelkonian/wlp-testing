@@ -49,12 +49,13 @@ renameE (Eq e1 e2) = rename2 Eq e1 e2
 renameE (ArrayAccess v e) = rename1 (ArrayAccess v) e
 renameE (Cond g et ef) = rename3 Cond g et ef
 renameE (RepBy arr i e) = rename3 RepBy arr i e
-renameE (Forall (BVar v typ) e) = do
+renameE (Forall v e) = do
   counter <- get
-  put (counter + 1)
-  let v' = "TEMP_" ++ show counter
-  e' <- renameE $ substE [v] [v'] e
-  return $ Forall (BVar v' typ) e'
+  let n = length v
+  put (counter + n)
+  let v' = ["TEMP_" ++ show c | c <- [counter..(counter + n)]]
+  e' <- renameE $ substE v v' e
+  return $ Forall v' e'
 renameE e = return e
 
 subst :: [String] -> [String] -> Stmt -> Stmt
@@ -88,8 +89,8 @@ substE ts es n@(Name x) =
   case elemIndex x ts of
     Just i -> Name $ es !! i
     Nothing -> n
-substE ts es (Forall (BVar v typ) e) =
-  Forall (BVar v typ) e'
+substE ts es (Forall vs e) =
+  Forall vs e'
   where e' = substE ts' es' e
-        (ts', es') = unzip $ filter (\(t, _) -> t /= v) (zip ts es)
+        (ts', es') = unzip $ filter (\(t, _) -> notElem t vs) (zip ts es)
 substE _ _ q = q

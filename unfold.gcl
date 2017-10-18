@@ -1,0 +1,10 @@
+{ x = 20 }
+E(x|y)
+  var i in
+    i := 20;
+    while (i > 0) do
+      x := x - 1;
+      i := i - 1
+    end
+  end
+{ x > 0 }

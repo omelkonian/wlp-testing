@@ -19,7 +19,7 @@ getVars e = nub $ getVars' e
 getVars' :: Expr -> [String]
 getVars' (Name v) = [v]
 getVars' (ArrayAccess v e) = v : getVars' e
-getVars' (Forall (BVar v _) e) = v : getVars' e
+getVars' (Forall vs e) = vs ++ getVars' e
 getVars' (Plus e e') = getVars' e ++ getVars' e'
 getVars' (Minus e e') = getVars' e ++ getVars' e'
 getVars' (Imply e e') = getVars' e ++ getVars' e'
@@ -68,15 +68,16 @@ checkAssumptions vars es = do
 
 
 
-checkGoal :: ResultMap -> Expr -> Symbolic ()
+checkGoal :: ResultMap -> Expr -> Symbolic Bool
 checkGoal vars e = do
   vMap <- forM (M.toList vars) (\(v, xv) -> do
             x <- sInteger v
             constrain $ x .== literal xv
             return (v, x))
   query $ do
-    let goal = toSmtB (M.fromList vMap) e
-    io $ putStrLn ("Checking " ++ show e)
-    result <- io $ putStr "Goal: " >> prove goal
-    io $ print result
-  return ()
+    constrain $ toSmtB (M.fromList vMap) e
+    cs <- checkSat
+    case cs of
+      Unk   -> error "Unknown"
+      Unsat -> return False
+      Sat   -> return True

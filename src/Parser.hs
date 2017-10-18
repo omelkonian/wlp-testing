@@ -110,7 +110,9 @@ exprP =
   try repbyP <|>
   buildExpressionParser table term <?> "expression"
   where table = [ [ infix_ "+" Plus, infix_ "-" Minus ]
-                , [ infix_ "<" Lt, infix_ "=" Eq, infix_ "<=" le_ ]
+                , [ infix_ "<" Lt, infix_ "=" Eq
+                  , infix_ "<=" le_, infix_ ">" gt, infix_ ">=" ge
+                  ]
                 , [ prefix "~" Not]
                 , [ infix_ "/\\" and_ ]
                 , [ infix_ "\\/" or_ ]
@@ -120,12 +122,6 @@ exprP =
                try forallP <|>
                try arrayAccessP <|>
                primitiveP <?> "term"
-
-bvarP :: Parser BoundVariable
-bvarP = lexeme $ do
-  name <- nameP
-  typ <- ":" ~> typeP
-  return $ BVar name typ
 
 repbyP :: Parser Expr
 repbyP = do
@@ -144,13 +140,13 @@ condP = do
 forallP :: Parser Expr
 forallP = "(" ~> (forall <|> exists) <~ ")"
   where forall = do
-         bvar <- "forall" ~> bvarP
+         vs <- "forall" ~> commas nameP
          expr <- "::" ~> exprP
-         return $ Forall bvar expr
+         return $ Forall vs expr
         exists = do
-         bvar <- "exists" ~> bvarP
+         vs <- "exists" ~> commas nameP
          expr <- "::" ~> exprP
-         return $ Not (Forall bvar (Not expr))
+         return $ Not (Forall vs (Not expr))
 
 arrayAccessP :: Parser Expr
 arrayAccessP = do

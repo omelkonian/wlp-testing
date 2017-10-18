@@ -25,11 +25,11 @@ data Expr = LitInt Int
           | Lt Expr Expr
           | Eq Expr Expr
           | ArrayAccess String Expr
-          | Forall BoundVariable Expr
+          | Forall [String] Expr
           | Cond Expr Expr Expr
           | RepBy Expr Expr Expr
 
-data BoundVariable = BVar String Type
+-- data BoundVariable = BVar String Type
 
 data PrimitiveType = Boolean | Integer deriving Show
 
@@ -40,9 +40,11 @@ hoarify prog pre post =
   prog { body = Seq (Assume pre) (Seq (body prog) (Assert post))}
 
 -- Shorthands
-and_ p q = Imply p $ Not q
+and_ p q = Not $ Imply p (Not q)
 or_ p q = Imply (Imply p q) q
 le_ e1 e2 = or_ (Lt e1 e2) (Eq e1 e2)
+gt e1 e2 = Not $ le_ e1 e2
+ge e1 e2 = Not $ Lt e1 e2
 
 -- Display
 instance Show Program where
@@ -74,8 +76,8 @@ instance Show Expr where
   show (Lt e1 e2) = show e1 ++ " < " ++ show e2
   show (Eq e1 e2) = show e1 ++ " = " ++ show e2
   show (ArrayAccess arr e) = arr ++ "[" ++ show e ++ "]"
-  show (Forall bvar e) =
-    "(forall " ++ show bvar ++ " :: " ++ show e ++ ")"
+  show (Forall vs e) =
+    "(forall " ++ show vs ++ " :: " ++ show e ++ ")"
   show (Cond g et ef) =
     "(" ++ show g ++ " | " ++ show et ++ " | " ++ show ef ++ ")"
   show (RepBy arr i e) =
@@ -85,5 +87,5 @@ instance Show Type where
   show (Prim primType) = show primType
   show (Array primType) = "[] " ++ show primType
 
-instance Show BoundVariable where
-  show (BVar v t) = v ++ ":" ++ show t
+-- instance Show BoundVariable where
+--   show (BVar v t) = v ++ ":" ++ show t
