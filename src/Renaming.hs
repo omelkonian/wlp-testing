@@ -3,6 +3,7 @@ module Renaming where
 import Control.Monad.State
 import Data.List (elemIndex, findIndex)
 import AST
+import Debug.Trace
 
 rename :: Stmt -> State Int Stmt
 rename Skip = return Skip
@@ -24,7 +25,7 @@ rename (VarStmt targets body) = do
   counter <- get
   let len = length targets
   put (counter + len)
-  let targets' = ["TEMP_" ++ show i | i <- [counter..(counter + len - 1)]]
+  let targets' = ["$" ++ show i | i <- [counter..(counter + len - 1)]]
   return $ VarStmt targets' (subst targets targets' body')
 rename _ = error "rename does not accept branching statements"
 
@@ -44,6 +45,7 @@ renameE :: Expr -> State Int Expr
 renameE (Plus e1 e2) = rename2 Plus e1 e2
 renameE (Minus e1 e2) = rename2 Minus e1 e2
 renameE (Imply e1 e2) = rename2 Imply e1 e2
+renameE (Not e) = rename1 Not e
 renameE (Lt e1 e2) = rename2 Lt e1 e2
 renameE (Eq e1 e2) = rename2 Eq e1 e2
 renameE (ArrayAccess v e) = rename1 (ArrayAccess v) e
@@ -53,7 +55,7 @@ renameE (Forall v e) = do
   counter <- get
   let n = length v
   put (counter + n)
-  let v' = ["TEMP_" ++ show c | c <- [counter..(counter + n)]]
+  let v' = ["$" ++ show c | c <- [counter..(counter + n - 1)]]
   e' <- renameE $ substE v v' e
   return $ Forall v' e'
 renameE e = return e
@@ -78,6 +80,7 @@ substE :: [String] -> [String] -> Expr -> Expr
 substE ts es (Plus e1 e2) = Plus (substE ts es e1) (substE ts es e2)
 substE ts es (Minus e1 e2) = Minus (substE ts es e1) (substE ts es e2)
 substE ts es (Imply e1 e2) = Imply (substE ts es e1) (substE ts es e2)
+substE ts es (Not e) = Not $ substE ts es e
 substE ts es (Lt e1 e2) = Lt (substE ts es e1) (substE ts es e2)
 substE ts es (Eq e1 e2) = Eq (substE ts es e1) (substE ts es e2)
 substE ts es (ArrayAccess v e) = ArrayAccess v (substE ts es e)

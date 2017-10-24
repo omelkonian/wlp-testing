@@ -118,9 +118,9 @@ exprP =
                 , [ infix_ "\\/" or_ ]
                 , [ infix_ "=>" Imply ]
                 ]
-        term = try (parens exprP) <|>
+        term = try arrayAccessP <|>
+               try (parens exprP) <|>
                try forallP <|>
-               try arrayAccessP <|>
                primitiveP <?> "term"
 
 repbyP :: Parser Expr
@@ -150,8 +150,8 @@ forallP = "(" ~> (forall <|> exists) <~ ")"
 
 arrayAccessP :: Parser Expr
 arrayAccessP = do
-  name <- nameP
-  expr <- "[" ~> exprP <~ "]"
+  name <- nameP <~ "["
+  expr <- exprP <~ "]"
   return $ ArrayAccess name expr
 
 primitiveP :: Parser Expr

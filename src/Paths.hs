@@ -2,9 +2,9 @@ module Paths where
 
 import AST
 
-getAllPaths :: Int -> Program -> [Stmt]
-getAllPaths depth prog =
-  concat [getPaths d (body prog) | d <- [1..depth]]
+getAllPaths :: Int -> Int -> Program -> [Stmt]
+getAllPaths depthStart depthEnd prog =
+  concat [getPaths d (body prog) | d <- [depthStart..depthEnd]]
 
 getPaths :: Int -> Stmt -> [Stmt]
 getPaths d (VarStmt ids s) =

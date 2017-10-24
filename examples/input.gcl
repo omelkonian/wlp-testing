@@ -1,4 +1,4 @@
-{ (exists x:int :: x <= 0 ~> x - 1 < (? true -> true | true)) }
+{ (exists x :: x <= 0 => x - 1 < (? true -> true | true)) }
 ADD(x, y | z, w)
     skip;
     a := 5;

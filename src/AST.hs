@@ -28,6 +28,7 @@ data Expr = LitInt Int
           | Forall [String] Expr
           | Cond Expr Expr Expr
           | RepBy Expr Expr Expr
+          deriving Eq
 
 -- data BoundVariable = BVar String Type
 
@@ -79,7 +80,7 @@ instance Show Expr where
   show (Forall vs e) =
     "(forall " ++ show vs ++ " :: " ++ show e ++ ")"
   show (Cond g et ef) =
-    "(" ++ show g ++ " | " ++ show et ++ " | " ++ show ef ++ ")"
+    "(" ++ show g ++ " -> " ++ show et ++ " | " ++ show ef ++ ")"
   show (RepBy arr i e) =
     "[" ++ show arr ++ " | " ++ show i ++ " -> " ++ show e ++ "]"
 
