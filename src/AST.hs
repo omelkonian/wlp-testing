@@ -30,12 +30,6 @@ data Expr = LitInt Int
           | RepBy Expr Expr Expr
           deriving Eq
 
--- data BoundVariable = BVar String Type
-
-data PrimitiveType = Boolean | Integer deriving Show
-
-data Type = Prim PrimitiveType | Array PrimitiveType
-
 hoarify :: Program -> Expr -> Expr -> Program
 hoarify prog pre post =
   prog { body = Seq (Assume pre) (Seq (body prog) (Assert post))}
@@ -83,10 +77,3 @@ instance Show Expr where
     "(" ++ show g ++ " -> " ++ show et ++ " | " ++ show ef ++ ")"
   show (RepBy arr i e) =
     "[" ++ show arr ++ " | " ++ show i ++ " -> " ++ show e ++ "]"
-
-instance Show Type where
-  show (Prim primType) = show primType
-  show (Array primType) = "[] " ++ show primType
-
--- instance Show BoundVariable where
---   show (BVar v t) = v ++ ":" ++ show t

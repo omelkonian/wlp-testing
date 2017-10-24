@@ -57,6 +57,3 @@ instance PP Expr where
     putStr " -> " >> pp et 0
     putStr " | " >> pp ef 0 >> putStr ")"
   pp e i = put i [show e]
-
-instance PP Type where
-  pp t _ = putStr $ ":" ++ show t

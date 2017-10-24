@@ -1,8 +1,8 @@
+{ x = 0 /\ y >= 0 }
 LOOP(x|y)
-    x := 5;
-    {0} while (1) do
-      if (2) then
-        skip
-      else
-        skip; skip
+    {y = 0}
+    while (x > 0) do
+      y := y + 1;
+      x := x - 1
     end
+{ x = 0 }

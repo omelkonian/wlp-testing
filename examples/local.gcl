@@ -1,12 +1,12 @@
 { true }
 LOCAL(x|y)
-    x := 5;
-    var x in
-      x := 10;
-      if (x = 5) then
-        skip
-      else
-        skip;
-        skip
-    end
-{ x = 5 }
+  x := 5;
+  var x in
+    x := 10;
+    if (x = 5) then
+      skip
+    else
+      x := 6;
+      y := 0
+  end
+{ x = 5 /\ y = 0 }

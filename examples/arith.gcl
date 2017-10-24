@@ -1,0 +1,7 @@
+{ x != 10 }
+ARITH(x|y)
+    { z = 1 + 1 }
+    while false do
+      skip
+    end
+{ z = 5 - 3 }

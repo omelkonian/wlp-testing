@@ -2,6 +2,7 @@ module Main where
 
 import Options.Applicative
 import Data.Semigroup ((<>))
+import Data.List (nub)
 import Control.Monad (when, unless)
 import Control.Monad.State (evalState)
 import Data.Foldable (for_)
@@ -15,9 +16,9 @@ import Parser (programP)
 import PrettyPrinter (pp, ln)
 import Paths (getAllPaths)
 import Renaming (rename)
-import Wlp (wlp, fixpointReplaceConds, accesses)
+import Wlp (wlp, fixpointReplaceConds)
 import Normalizer (splitAssumptions)
-import SAT (getVars, getArrays, checkAssumptions) --, checkGoal)
+import SAT (getVars, checkAssumptions, checkGoal, checkImmediate)
 
 
 data Options = Options
@@ -34,7 +35,7 @@ parseOptions = Options
   <*> option auto
       (short 's' <> showDefault <> value 1 <> metavar "INT" <> help "Min depth")
   <*> option auto
-      (short 'e' <> showDefault <> value 100 <> metavar "INT" <> help "Max depth")
+      (short 'e' <> showDefault <> value 10 <> metavar "INT" <> help "Max depth")
   <*> switch ( long "debug" <> short 'd' <> help "Whether to print debug info" )
 
 withInfo :: Parser a -> String -> ParserInfo a
@@ -60,23 +61,21 @@ run (Options inputFile depthStart depthEnd debug) = do
         let replaced = fixpointReplaceConds predicate
         when debug $ putStrLn "Replaced: " >> pp replaced 0 >> ln
 
-        let acc = accesses replaced
-        when debug $ putStrLn "Accesses: " >> print acc >> ln
-
         let (assumptions, goal) = splitAssumptions replaced
         when debug (do
           putStrLn "****** GOAL *******"
           putStr "Assumptions: " >> ln
-          for_ assumptions (\ass -> putStrLn $ "    " ++ show ass)
+          for_ (nub assumptions) (\ass -> putStrLn $ "    " ++ show ass)
           putStr "Goal: " >> print goal)
 
         when debug $ putStrLn "^^^^^^ SAT ^^^^^^"
-        let vars = getVars replaced
+        let vars = nub $ getVars replaced ++ getVars goal
         when debug $ putStrLn $ "Vars: " ++ show vars
-        let arrays = getArrays replaced
-        when debug $ putStrLn $ "Arrays: " ++ show arrays
-        solution <- runSMT $ checkAssumptions vars arrays assumptions
-        when debug $ putStrLn $ "Model: " ++ show solution
+
+        runSMT $ checkImmediate vars assumptions goal
+
+        -- solution <- runSMT $ checkAssumptions vars assumptions
+        -- when debug $ putStrLn $ "Model: " ++ show solution
         -- case solution of
         --   Just result -> do
         --     res <- runSMT $ checkGoal result goal

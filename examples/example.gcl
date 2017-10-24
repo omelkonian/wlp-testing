@@ -1,6 +1,6 @@
-{ -1 <= x }
+{ x >= -1 }
 E(x | y)
-  while (0 < x) do
+  while (x < 0) do
     x := x + 1;
     y:=x
   end

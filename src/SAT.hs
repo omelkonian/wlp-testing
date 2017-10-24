@@ -1,5 +1,6 @@
 module SAT where
 
+import System.Console.ANSI
 import Control.Monad
 import Data.SBV
 import Data.SBV.Control hiding (Name)
@@ -9,9 +10,8 @@ import qualified Data.Map as M
 
 import AST
 
-type SArr = SFunArray Integer Integer
+
 type VarMap = M.Map String SInteger
-type ArrayMap = M.Map String SArr
 type ResultMap = M.Map String Integer
 
 getVars :: Expr -> [String]
@@ -34,52 +34,29 @@ genSMTVars :: [String] -> Symbolic VarMap
 genSMTVars vars = do smtVars <- sIntegers vars
                      return $ M.fromList $ zip vars smtVars
 
-getArrays :: Expr -> [String]
-getArrays e = nub $ getArrays' e
-
-getArrays' :: Expr -> [String]
-getArrays' (ArrayAccess v _) = [v]
-getArrays' (Forall _ e) = getArrays' e
-getArrays' (Plus e e') = getArrays' e ++ getArrays' e'
-getArrays' (Minus e e') = getArrays' e ++ getArrays' e'
-getArrays' (Imply e e') = getArrays' e ++ getArrays' e'
-getArrays' (Not e) = getArrays' e
-getArrays' (Lt e e') = getArrays' e ++ getArrays' e'
-getArrays' (Eq e e') = getArrays' e ++ getArrays' e'
-getArrays' (Cond g et ef) = getArrays' g ++ getArrays' et ++ getArrays' ef
-getArrays' _ = []
-
-genSMTArrays :: [String] -> Symbolic ArrayMap
-genSMTArrays vars = do smtVars <- mapM newArray vars
-                       return $ M.fromList $ zip vars smtVars
-
-toSmt :: VarMap -> ArrayMap -> Expr -> SInteger
-toSmt vs as (LitInt i) = literal $ toInteger i
-toSmt vs as (Name v) =
+toSmt :: VarMap -> Expr -> SInteger
+toSmt vs (LitInt i) = literal $ toInteger i
+toSmt vs (Name v) =
   fromMaybe (error "Inconsistent VarMap") (M.lookup v vs)
-toSmt vs as (Plus e e') = toSmt vs as e + toSmt vs as e'
-toSmt vs as (Minus e e') = toSmt vs as e - toSmt vs as e'
-toSmt vs as (ArrayAccess a e) =
-  readArray array index
-  where array = fromMaybe (error "Inconsistent ArrayMap") (M.lookup a as)
-        index = toSmt vs as e
-toSmt _ _ _ = error "toSmt cannot handle logical expressions"
+toSmt vs (Plus e e') = toSmt vs e + toSmt vs e'
+toSmt vs (Minus e e') = toSmt vs e - toSmt vs e'
+toSmt vs (ArrayAccess a e) = uninterpret a (toSmt vs e)
+toSmt _ _ = error "toSmt cannot handle logical expressions"
 
-toSmtB :: VarMap -> ArrayMap -> Expr -> SBool
-toSmtB vs as (LitBool b) = fromBool b
-toSmtB vs as (Imply p q) = toSmtB vs as p ==> toSmtB vs as q
-toSmtB vs as (Not e) = bnot $ toSmtB vs as e
-toSmtB vs as (Eq e e') = toSmt vs as e .== toSmt vs as e'
-toSmtB vs as (Lt e e') = toSmt vs as e .< toSmt vs as e'
-toSmtB vs as (Forall _ e) = toSmtB vs as e
-toSmtB _ _ _ = error "toSmtB cannot handle arithmetic expressions"
+toSmtB :: VarMap -> Expr -> SBool
+toSmtB vs (LitBool b) = fromBool b
+toSmtB vs (Imply p q) = toSmtB vs p ==> toSmtB vs q
+toSmtB vs (Not e) = bnot $ toSmtB vs e
+toSmtB vs (Eq e e') = toSmt vs e .== toSmt vs e'
+toSmtB vs (Lt e e') = toSmt vs e .< toSmt vs e'
+toSmtB vs (Forall _ e) = toSmtB vs e
+toSmtB _ _ = error "toSmtB cannot handle arithmetic expressions"
 
-checkAssumptions :: [String] -> [String] -> [Expr] -> Symbolic (Maybe ResultMap)
-checkAssumptions vars arrays assumptions = do
+checkAssumptions :: [String] -> [Expr] -> Symbolic (Maybe ResultMap)
+checkAssumptions vars assumptions = do
   smtVars <- genSMTVars vars
-  smtArrays <- genSMTArrays arrays
   -- Contraints
-  forM_ assumptions (constrain . toSmtB smtVars smtArrays)
+  forM_ assumptions (constrain . toSmtB smtVars)
   -- Query
   query $ do
     cs <- checkSat
@@ -91,18 +68,51 @@ checkAssumptions vars arrays assumptions = do
                     return (v, xv))
                   return $ Just $ M.fromList res
 
+checkGoal :: ResultMap -> Expr -> Symbolic Bool
+checkGoal vars e = do
+  vMap <- forM (M.toList vars) (\(v, xv) -> do
+            x <- sInteger v
+            constrain $ x .== literal xv
+            return (v, x))
+  constrain $ toSmtB (M.fromList vMap) e
+  query $ do
+    cs <- checkSat
+    case cs of
+      Unk   -> error "Unknown"
+      Unsat -> return False
+      Sat   -> return True
 
-
--- checkGoal :: ResultMap -> Expr -> Symbolic Bool
--- checkGoal vars e = do
---   vMap <- forM (M.toList vars) (\(v, xv) -> do
---             x <- sInteger v
---             constrain $ x .== literal xv
---             return (v, x))
---   query $ do
---     constrain $ toSmtB (M.fromList vMap) e
---     cs <- checkSat
---     case cs of
---       Unk   -> error "Unknown"
---       Unsat -> return False
---       Sat   -> return True
+checkImmediate :: [String] -> [Expr] -> Expr -> Symbolic ()
+checkImmediate vars assumptions goal = do
+  smtVars <- genSMTVars vars
+  forM_ assumptions (constrain . toSmtB smtVars)
+  -- let ass = foldl1 (&&&) (map (toSmtB smtVars) assumptions)
+  -- constrain ass
+  let g = toSmtB smtVars goal
+  constrain g
+  -- Query
+  query $ do
+    cs <- checkSat
+    case cs of
+      Unk   -> error "Unknown!"
+      Unsat -> io $ runSMT $ query $ do
+        res <- io $ prove $ foldl1 (&&&) (map (toSmtB smtVars) assumptions)
+        case show res of
+          "Falsifiable" -> io $ do
+            setSGR [SetColor Foreground Vivid Yellow]
+            putStrLn "Ignore"
+            setSGR [Reset]
+          _ -> io $ do
+            setSGR [SetColor Foreground Vivid Red]
+            putStrLn "Fail"
+            setSGR [Reset]
+        -- forM_ assumptions (constrain . toSmtB smtVars)
+        -- cs' <- checkSat
+        -- case cs' of
+        --   Unk   -> error "Unknown"
+        --   Unsat -> return "Ignore"
+        --   Sat   -> return "Fail"
+      Sat   -> io $ do
+        setSGR [SetColor Foreground Vivid Green]
+        putStrLn "Pass"
+        setSGR [Reset]

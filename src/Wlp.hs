@@ -69,7 +69,7 @@ replaceConds e = foldl replaceCond e (getConds e)
 
 replaceCond :: Expr -> Expr -> Expr
 replaceCond e (Cond g l r) =
-  or_ (Imply g (replaceCond0 e (g, l))) (Imply (Not g) (replaceCond0 e (g, r)))
+  and_ (Imply g (replaceCond0 e (g, l))) (Imply (Not g) (replaceCond0 e (g, r)))
 
 replaceCond0 :: Expr -> (Expr, Expr) -> Expr
 replaceCond0 c@(Cond g _ _) (g', e') = if g == g' then e' else c
@@ -82,20 +82,3 @@ replaceCond0 (Not e) c = Not (replaceCond0 e c)
 replaceCond0 (ArrayAccess arr e) c = ArrayAccess arr (replaceCond0 e c)
 replaceCond0 (Forall vs e) c = Forall vs (replaceCond0 e c)
 replaceCond0 e _ = e
-
-
-type Accesses = M.Map String [Expr]
-
-uniqueUnion :: Accesses -> Accesses -> Accesses
-uniqueUnion = M.unionWith (\l1 l2 -> nub $ l1 ++ l2)
-
-accesses :: Expr -> Accesses
-accesses (Plus e1 e2) = uniqueUnion (accesses e1) (accesses e2)
-accesses (Minus e1 e2) = uniqueUnion (accesses e1) (accesses e2)
-accesses (Lt e1 e2) = uniqueUnion (accesses e1) (accesses e2)
-accesses (Eq e1 e2) = uniqueUnion (accesses e1) (accesses e2)
-accesses (Imply e1 e2) = uniqueUnion (accesses e1) (accesses e2)
-accesses (Not e) = accesses e
-accesses (Forall _ e) = accesses e
-accesses (ArrayAccess arr e) = uniqueUnion (M.singleton arr [e]) (accesses e)
-accesses _ = M.empty

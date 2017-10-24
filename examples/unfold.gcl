@@ -1,11 +1,10 @@
-{ x = 20 }
+{ x > 100 }
 E(x|y)
   var i in
-    i := 25;
+    i := 12;
     while (i > 0) do
       x := x - 1;
       i := i - 1
-    end;
-    assume i = 0
+    end
   end
-{ x > 0 }
+{ x < 0 }

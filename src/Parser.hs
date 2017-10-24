@@ -26,6 +26,7 @@ identifier = Tokens.identifier haskell
 reserved = Tokens.reservedOp haskell
 infix_ op f = Infix (reserved op >> return f) AssocLeft
 prefix op f = Prefix (reserved op >> return f)
+postfix op f = Postfix (reserved op >> return f)
 
 -- Programs
 programP :: Parser Program
@@ -49,7 +50,7 @@ simpleProgramP = do
 -- Statements
 stmtP :: Parser Stmt
 stmtP = buildExpressionParser table term <?> "expression"
-  where table = [ [infix_ ";" Seq]]
+  where table = [ [infix_ ";" Seq] ]
         term = try varStmtP <|>
                try whileP <|>
                try iteP <|>
@@ -110,8 +111,9 @@ exprP =
   try repbyP <|>
   buildExpressionParser table term <?> "expression"
   where table = [ [ infix_ "+" Plus, infix_ "-" Minus ]
-                , [ infix_ "<" Lt, infix_ "=" Eq
-                  , infix_ "<=" le_, infix_ ">" gt, infix_ ">=" ge
+                , [ infix_ "=" Eq, infix_ "!=" (\e e' -> Not $ Eq e e')
+                  , infix_ "<" Lt, infix_ "<=" le_
+                  , infix_ ">" gt, infix_ ">=" ge
                   ]
                 , [ prefix "~" Not]
                 , [ infix_ "/\\" and_ ]
@@ -173,17 +175,3 @@ numberP = do
 
 boolP :: Parser Bool
 boolP = (True <$ str "true") <|> (False <$ str "false")
-
--- Types
-typeP :: Parser Type
-typeP = lexeme $
-  (Prim <$> primitiveTypeP) <|>
-  (Array <$> arrayTypeP)
-
-primitiveTypeP :: Parser PrimitiveType
-primitiveTypeP = lexeme $
-  (Boolean <$ str "bool") <|>
-  (Integer <$ str "int")
-
-arrayTypeP :: Parser PrimitiveType
-arrayTypeP = "[]" ~> primitiveTypeP
