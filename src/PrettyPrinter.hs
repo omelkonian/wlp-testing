@@ -45,7 +45,7 @@ instance PP Stmt where
         pp s (indent + 1)
 
 instance PP Expr where
-  pp (Imply e1 e2) i = do
+  pp (BinOp Imply e1 e2) i = do
     pp e1 i >> putStr " => (" >> ln
     pp e2 (i + 1) >> ln
     put i [")"]

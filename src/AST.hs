@@ -18,28 +18,47 @@ data Stmt = Skip
 data Expr = LitInt Int
           | LitBool Bool
           | Name String
-          | Plus Expr Expr
-          | Minus Expr Expr
-          | Imply Expr Expr
           | Not Expr
-          | Lt Expr Expr
-          | Eq Expr Expr
-          | ArrayAccess String Expr
-          | Forall [String] Expr
+          | BinOp Op Expr Expr
           | Cond Expr Expr Expr
+          | Forall [String] Expr
+          | ArrayAccess String Expr
           | RepBy Expr Expr Expr
           deriving Eq
+
+data Op = Plus | Minus | Imply | Lt | Eq deriving Eq
 
 hoarify :: Program -> Expr -> Expr -> Program
 hoarify prog pre post =
   prog { body = Seq (Assume pre) (Seq (body prog) (Assert post))}
 
--- Shorthands
-and_ p q = Not $ Imply p (Not q)
-or_ p q = Imply (Imply p q) q
-le_ e1 e2 = or_ (Lt e1 e2) (Eq e1 e2)
-gt e1 e2 = Not $ le_ e1 e2
-ge e1 e2 = Not $ Lt e1 e2
+-- DSL
+infixr 5 <:>
+s <:> s' = Seq s s'
+infixr 4 .:=.
+vs .:=. es = Asg vs es
+infixr 3 ==>
+e ==> e' = BinOp Imply e e'
+infixl 2 \/
+e \/ e' = (e ==> e') ==> e'
+infixl 2 /\
+e /\ e' = Not $ e ==> Not e'
+infix 1 .=
+e .= e' = BinOp Eq e e'
+infix 1 .<
+e .< e' = BinOp Lt e e'
+infix 1 .<=
+e .<= e' = (e .< e') \/ (e .= e')
+infix 1 .>
+e .> e' = Not $ e .<= e'
+infix 1 .>=
+e .>= e' = Not $ e .< e'
+infixl 0 .+
+e .+ e' = BinOp Plus e e'
+infixl 0 .-
+e .- e' = BinOp Minus e e'
+_T = LitBool True
+_F = LitBool False
 
 -- Display
 instance Show Program where
@@ -64,12 +83,8 @@ instance Show Expr where
   show (LitInt i) = show i
   show (LitBool b) = show b
   show (Name s) = s
-  show (Plus e1 e2) = show e1 ++ " + " ++ show e2
-  show (Minus e1 e2) = show e1 ++ " - " ++ show e2
-  show (Imply p q) = "(" ++ show p ++ " => " ++ show q ++ ")"
+  show (BinOp op e1 e2) = show e1 ++ " " ++ show op ++ " " ++ show e2
   show (Not e) = "~ (" ++ show e ++ ")"
-  show (Lt e1 e2) = show e1 ++ " < " ++ show e2
-  show (Eq e1 e2) = show e1 ++ " = " ++ show e2
   show (ArrayAccess arr e) = arr ++ "[" ++ show e ++ "]"
   show (Forall vs e) =
     "(forall " ++ show vs ++ " :: " ++ show e ++ ")"
@@ -77,3 +92,11 @@ instance Show Expr where
     "(" ++ show g ++ " -> " ++ show et ++ " | " ++ show ef ++ ")"
   show (RepBy arr i e) =
     "[" ++ show arr ++ " | " ++ show i ++ " -> " ++ show e ++ "]"
+
+instance Show Op where
+  show op = case op of
+    Plus -> "+"
+    Minus -> "-"
+    Lt -> "<"
+    Eq -> "="
+    Imply -> "==>"

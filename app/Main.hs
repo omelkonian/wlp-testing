@@ -10,7 +10,6 @@ import qualified Data.Map as M
 import Text.Parsec (parse, parseTest)
 import Data.SBV (runSMT, sIntegers)
 
-
 import AST
 import Parser (programP)
 import PrettyPrinter (pp, ln)

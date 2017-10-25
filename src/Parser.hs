@@ -50,7 +50,7 @@ simpleProgramP = do
 -- Statements
 stmtP :: Parser Stmt
 stmtP = buildExpressionParser table term <?> "expression"
-  where table = [ [infix_ ";" Seq] ]
+  where table = [ [infix_ ";" (<:>)] ]
         term = try varStmtP <|>
                try whileP <|>
                try iteP <|>
@@ -76,13 +76,13 @@ arrayAsgP = do
   arr <- nameP <~ "["
   index <- exprP <~ "]"
   rhs <- ":=" ~> exprP
-  return $ Asg [arr] [RepBy (Name arr) index rhs]
+  return $ [arr] .:=. [RepBy (Name arr) index rhs]
 
 simulAsgP :: Parser Stmt
 simulAsgP = do
   targets <- commas nameP <~ ":="
   rhs <- commas exprP
-  return $ Asg targets rhs
+  return $ targets .:=. rhs
 
 iteP :: Parser Stmt
 iteP = do
@@ -110,15 +110,15 @@ exprP =
   try condP <|>
   try repbyP <|>
   buildExpressionParser table term <?> "expression"
-  where table = [ [ infix_ "+" Plus, infix_ "-" Minus ]
-                , [ infix_ "=" Eq, infix_ "!=" (\e e' -> Not $ Eq e e')
-                  , infix_ "<" Lt, infix_ "<=" le_
-                  , infix_ ">" gt, infix_ ">=" ge
+  where table = [ [ infix_ "+" (.+), infix_ "-" (.-) ]
+                , [ infix_ "=" (.=), infix_ "!=" (\e e' -> Not $ e .= e')
+                  , infix_ "<" (.<), infix_ "<=" (.<=)
+                  , infix_ ">" (.>), infix_ ">=" (.>=)
                   ]
                 , [ prefix "~" Not]
-                , [ infix_ "/\\" and_ ]
-                , [ infix_ "\\/" or_ ]
-                , [ infix_ "=>" Imply ]
+                , [ infix_ "/\\" (/\) ]
+                , [ infix_ "\\/" (\/) ]
+                , [ infix_ "=>" (==>) ]
                 ]
         term = try arrayAccessP <|>
                try (parens exprP) <|>

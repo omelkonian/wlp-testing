@@ -8,7 +8,7 @@ import Data.List hiding (lookup)
 import Data.Maybe (fromMaybe)
 import qualified Data.Map as M
 
-import AST
+import AST hiding ((==>), (.<))
 
 
 type VarMap = M.Map String SInteger
@@ -19,36 +19,32 @@ getVars e = nub $ getVars' e
 
 getVars' :: Expr -> [String]
 getVars' (Name v) = [v]
-getVars' (ArrayAccess v e) = getVars' e
-getVars' (Forall vs e) = vs ++ getVars' e
-getVars' (Plus e e') = getVars' e ++ getVars' e'
-getVars' (Minus e e') = getVars' e ++ getVars' e'
-getVars' (Imply e e') = getVars' e ++ getVars' e'
+getVars' (BinOp _ e e') = getVars' e ++ getVars' e'
 getVars' (Not e) = getVars' e
-getVars' (Lt e e') = getVars' e ++ getVars' e'
-getVars' (Eq e e') = getVars' e ++ getVars' e'
 getVars' (Cond g et ef) = getVars' g ++ getVars' et ++ getVars' ef
+getVars' (Forall vs e) = vs ++ getVars' e
+getVars' (ArrayAccess v e) = getVars' e
 getVars' _ = []
 
 genSMTVars :: [String] -> Symbolic VarMap
-genSMTVars vars = do smtVars <- sIntegers vars
-                     return $ M.fromList $ zip vars smtVars
+genSMTVars vars = do
+  smtVars <- sIntegers vars
+  return $ M.fromList $ zip vars smtVars
 
 toSmt :: VarMap -> Expr -> SInteger
 toSmt vs (LitInt i) = literal $ toInteger i
-toSmt vs (Name v) =
-  fromMaybe (error "Inconsistent VarMap") (M.lookup v vs)
-toSmt vs (Plus e e') = toSmt vs e + toSmt vs e'
-toSmt vs (Minus e e') = toSmt vs e - toSmt vs e'
+toSmt vs (Name v) = fromMaybe (error "Inconsistent VarMap") (M.lookup v vs)
+toSmt vs (BinOp Plus e e') = toSmt vs e + toSmt vs e'
+toSmt vs (BinOp Minus e e') = toSmt vs e - toSmt vs e'
 toSmt vs (ArrayAccess a e) = uninterpret a (toSmt vs e)
 toSmt _ _ = error "toSmt cannot handle logical expressions"
 
 toSmtB :: VarMap -> Expr -> SBool
 toSmtB vs (LitBool b) = fromBool b
-toSmtB vs (Imply p q) = toSmtB vs p ==> toSmtB vs q
+toSmtB vs (BinOp Eq e e') = toSmt vs e .== toSmt vs e'
+toSmtB vs (BinOp Lt e e') = toSmt vs e .< toSmt vs e'
 toSmtB vs (Not e) = bnot $ toSmtB vs e
-toSmtB vs (Eq e e') = toSmt vs e .== toSmt vs e'
-toSmtB vs (Lt e e') = toSmt vs e .< toSmt vs e'
+toSmtB vs (BinOp Imply p q) = toSmtB vs p ==> toSmtB vs q
 toSmtB vs (Forall _ e) = toSmtB vs e
 toSmtB _ _ = error "toSmtB cannot handle arithmetic expressions"
 
