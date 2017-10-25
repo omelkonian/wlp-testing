@@ -14,6 +14,9 @@ data Stmt = Skip
           | Ite Expr Stmt Stmt
           | While (Maybe Expr) Expr Stmt
           | VarStmt [String] Stmt
+          deriving ( Eq
+                  --  , Show
+                   )
 
 data Expr = LitInt Int
           | LitBool Bool
@@ -24,19 +27,23 @@ data Expr = LitInt Int
           | Forall [String] Expr
           | ArrayAccess String Expr
           | RepBy Expr Expr Expr
-          deriving Eq
+          deriving ( Eq
+                  --  , Show
+                   )
 
-data Op = Plus | Minus | Imply | Lt | Eq deriving Eq
+data Op = Plus | Minus | Imply | Lt | Eq deriving ( Eq
+                                                  -- , Show
+                                                  )
 
 hoarify :: Program -> Expr -> Expr -> Program
 hoarify prog pre post =
-  prog { body = Seq (Assume pre) (Seq (body prog) (Assert post))}
+  prog { body = Seq (Assume pre) (Seq (body prog) (Assert post)) }
 
 -- DSL
-infixr 5 <:>
+infixr 4 <:>
 s <:> s' = Seq s s'
-infixr 4 .:=.
-vs .:=. es = Asg vs es
+infixr 5 .:=
+vs .:= es = Asg vs es
 infixr 3 ==>
 e ==> e' = BinOp Imply e e'
 infixl 2 \/
@@ -59,6 +66,8 @@ infixl 0 .-
 e .- e' = BinOp Minus e e'
 _T = LitBool True
 _F = LitBool False
+i = LitInt
+n = Name
 
 -- Display
 instance Show Program where

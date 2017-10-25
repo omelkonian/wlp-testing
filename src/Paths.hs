@@ -2,22 +2,20 @@ module Paths where
 
 import AST
 
-getAllPaths :: Int -> Int -> Program -> [Stmt]
+getAllPaths :: Int -> Int -> Stmt -> [Stmt]
 getAllPaths depthStart depthEnd prog =
-  concat [getPaths d (body prog) | d <- [depthStart..depthEnd]]
+  concat [getPaths d prog | d <- [depthStart..depthEnd]]
 
 getPaths :: Int -> Stmt -> [Stmt]
 getPaths d (VarStmt ids s) =
   [VarStmt ids s' | s' <- getPaths (d - 1) s]
-
 getPaths d (Ite g st sf) = pathT ++ pathF
   where pathT = [Assume g <:> st' | st' <- getPaths (d - 1) st]
         pathF = [(Assume $ Not g) <:> sf' | sf' <- getPaths (d - 1) sf]
-
 getPaths d (Seq s1 s2) =
   [s1' <:> s2' | [s1', s2'] <- getMultiPaths d [s1, s2]]
-
-getPaths 1 (While inv g _) = [assume inv (Not g)]
+getPaths 1 (While inv g _) =
+  [assume inv (Not g)]
 getPaths d (While inv g body) =
   [ foldr1 (<:>) $ insertConds $ concat paths
   | unrolls <- [1..quot d 2]
@@ -25,11 +23,7 @@ getPaths d (While inv g body) =
   , not $ null paths
   , let insertConds = foldr (\s -> (++) [assume inv g, s]) [assume inv (Not g)]
   ]
-
 getPaths d stmt = [stmt | d == 1]
-
-assume Nothing q = Assume q
-assume (Just p) q = Assume $ p /\ q
 
 getMultiPaths :: Int -> [Stmt] -> [[Stmt]]
 getMultiPaths d stmts =
@@ -42,3 +36,6 @@ getMultiPaths' depth (stmt : stmts) =
   , rest <- getMultiPaths' (depth - d) stmts
   , sum (d : map snd rest) == depth
   ]
+
+assume Nothing q = Assume q
+assume (Just p) q = Assume $ p /\ q

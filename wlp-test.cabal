@@ -42,6 +42,19 @@ executable wlp-test-exe
                      , ansi-terminal
   default-language:    Haskell2010
 
+test-suite quickcheck-test-framework-test
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      test
+  main-is:             Spec.hs
+  build-depends:       base
+                     , wlp-test
+                     , test-framework
+                     , test-framework-hunit
+                     , HUnit
+                     , mtl
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  default-language:    Haskell2010
+
 source-repository head
   type:     git
   location: https://github.com/omelkonian/wlp-testing

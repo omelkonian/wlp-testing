@@ -76,13 +76,13 @@ arrayAsgP = do
   arr <- nameP <~ "["
   index <- exprP <~ "]"
   rhs <- ":=" ~> exprP
-  return $ [arr] .:=. [RepBy (Name arr) index rhs]
+  return $ [arr] .:= [RepBy (Name arr) index rhs]
 
 simulAsgP :: Parser Stmt
 simulAsgP = do
   targets <- commas nameP <~ ":="
   rhs <- commas exprP
-  return $ targets .:=. rhs
+  return $ targets .:= rhs
 
 iteP :: Parser Stmt
 iteP = do

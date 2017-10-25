@@ -34,7 +34,7 @@ parseOptions = Options
   <*> option auto
       (short 's' <> showDefault <> value 1 <> metavar "INT" <> help "Min depth")
   <*> option auto
-      (short 'e' <> showDefault <> value 10 <> metavar "INT" <> help "Max depth")
+      (short 'e' <> showDefault <> value 100 <> metavar "INT" <> help "Max depth")
   <*> switch ( long "debug" <> short 'd' <> help "Whether to print debug info" )
 
 withInfo :: Parser a -> String -> ParserInfo a
@@ -50,7 +50,7 @@ run (Options inputFile depthStart depthEnd debug) = do
     Left err -> print err
     Right prog -> do
       when debug $ putStrLn "------ PROGRAM -------" >> ln >> pp prog 0 >> ln
-      for_ (getAllPaths depthStart depthEnd prog) (\s -> do
+      for_ (getAllPaths depthStart depthEnd (body prog)) (\s -> do
 
         let renamed = evalState (rename s) 0
         when debug $ putStrLn "====== PATH =======" >> pp renamed 0 >> ln

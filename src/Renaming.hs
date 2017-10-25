@@ -19,7 +19,7 @@ rename (Seq s1 s2) = do
   return $ s1' <:> s2'
 rename (Asg targets exprs) = do
   exprs' <- mapM renameE exprs
-  return $ targets .:=. exprs'
+  return $ targets .:= exprs'
 rename (VarStmt targets body) = do
   body' <- rename body
   counter <- get
@@ -61,7 +61,7 @@ subst ts es (Assume e) = Assume $ substE ts es e
 subst ts es (Assert e) = Assert $ substE ts es e
 subst ts es (Seq s1 s2) = subst ts es s1 <:> subst ts es s2
 subst ts es (Asg targets exprs) =
-  map substVars targets .:=. map (substE ts es) exprs
+  map substVars targets .:= map (substE ts es) exprs
   where substVars s = case elemIndex s ts of
                         Just i -> es !! i
                         Nothing -> s
