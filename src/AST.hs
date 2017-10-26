@@ -40,36 +40,41 @@ hoarify prog pre post =
   prog { body = Seq (Assume pre) (Seq (body prog) (Assert post)) }
 
 -- DSL
-infixr 4 <:>
+infixr 1 <:>
 s <:> s' = Seq s s'
-infixr 5 .:=
+infixr 2 .:=
 vs .:= es = Asg vs es
 infixr 3 ==>
 e ==> e' = BinOp Imply e e'
-infixl 2 \/
+infixl 5 \/
 e \/ e' = (e ==> e') ==> e'
-infixl 2 /\
-e /\ e' = Not $ e ==> Not e'
-infix 1 .=
+infixl 4 /\
+e /\ e' = if e' == _T then e else Not $ e ==> Not e'
+infix 6 .!=
+e .!= e' = Not $ e .= e'
+infix 6 .=
 e .= e' = BinOp Eq e e'
-infix 1 .<
+infix 7 .<
 e .< e' = BinOp Lt e e'
-infix 1 .<=
-e .<= e' = (e .< e') \/ (e .= e')
-infix 1 .>
-e .> e' = Not $ e .<= e'
-infix 1 .>=
-e .>= e' = Not $ e .< e'
-infixl 0 .+
+infix 7 .<=
+e .<= e' = Not $ e' .< e
+infix 7 .>
+e .> e' = e' .< e
+infix 7 .>=
+e .>= e' = e' .<= e
+infixl 8 .+
 e .+ e' = BinOp Plus e e'
-infixl 0 .-
+infixl 8 .-
 e .- e' = BinOp Minus e e'
+infixl 9 .!
+a .! e = ArrayAccess a e
 _T = LitBool True
 _F = LitBool False
 i = LitInt
 n = Name
 
 -- Display
+inParens s = "(" ++ s ++ ")"
 instance Show Program where
   show prog =
     "=============" ++ name prog ++ "================\n" ++
@@ -79,8 +84,8 @@ instance Show Stmt where
   show Skip = "Skip"
   show (Assert e) = "Assert (" ++ show e ++ ")"
   show (Assume e) = "Assume (" ++ show e ++ ")"
-  show (Asg targets exprs) = show targets ++ " := " ++ show exprs
-  show (Seq s1 s2) = show s1 ++ "; " ++ show s2
+  show (Asg targets exprs) = inParens $ show targets ++ " := " ++ show exprs
+  show (Seq s1 s2) = inParens $ show s1 ++ "; " ++ show s2
   show (Ite g st sf) =
     "if (" ++ show g ++ ") then " ++ show st ++ " else " ++ show sf
   show (While _ g body) =
@@ -92,7 +97,7 @@ instance Show Expr where
   show (LitInt i) = show i
   show (LitBool b) = show b
   show (Name s) = s
-  show (BinOp op e1 e2) = show e1 ++ " " ++ show op ++ " " ++ show e2
+  show (BinOp op e1 e2) = inParens $ show e1 ++ " " ++ show op ++ " " ++ show e2
   show (Not e) = "~ (" ++ show e ++ ")"
   show (ArrayAccess arr e) = arr ++ "[" ++ show e ++ "]"
   show (Forall vs e) =

@@ -12,6 +12,8 @@ import qualified Text.Parsec.Token as Tokens
 
 import AST
 
+import Debug.Trace
+
 -------------
 -- Parsers --
 -------------
@@ -88,7 +90,7 @@ iteP :: Parser Stmt
 iteP = do
   expr <- "if" ~> exprP
   stmtT <- "then" ~> stmtP
-  stmtF <- "else" ~> stmtP
+  stmtF <- "else" ~> stmtP <~ "fi"
   return $ Ite expr stmtT stmtF
 
 whileP :: Parser Stmt
@@ -118,7 +120,7 @@ exprP =
                 , [ prefix "~" Not]
                 , [ infix_ "/\\" (/\) ]
                 , [ infix_ "\\/" (\/) ]
-                , [ infix_ "=>" (==>) ]
+                , [ infix_ "==>" (==>) ]
                 ]
         term = try arrayAccessP <|>
                try (parens exprP) <|>

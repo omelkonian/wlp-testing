@@ -29,13 +29,17 @@ subst ts es (Forall vs e) =
   Forall vs e'
   where e' = subst ts' es' e
         (ts', es') = unzip $ filter (\(t, _) -> t `notElem` vs) (zip ts es)
-subst ts es access@(ArrayAccess arr index) =
+subst ts es (ArrayAccess arr index) =
   case arr `elemIndex` ts of
     Just i ->
       case es !! i of
-        RepBy a i e -> Cond (index .= i) e access
+        RepBy a i e -> Cond (index' .= i) e access'
+        Name a' -> ArrayAccess a' index'
         _ -> error "subst to array expect repby"
-    Nothing -> access
+    Nothing -> access'
+  where
+    index' = subst ts es index
+    access' = ArrayAccess arr index'
 subst ts es (RepBy arr i e) =
   RepBy (subst ts es arr) (subst ts es i) (subst ts es e)
 subst _ _ q = q

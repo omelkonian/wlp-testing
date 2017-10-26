@@ -2,6 +2,7 @@ module Paths where
 
 import AST
 
+
 getAllPaths :: Int -> Int -> Stmt -> [Stmt]
 getAllPaths depthStart depthEnd prog =
   concat [getPaths d prog | d <- [depthStart..depthEnd]]
@@ -17,11 +18,13 @@ getPaths d (Seq s1 s2) =
 getPaths 1 (While inv g _) =
   [assume inv (Not g)]
 getPaths d (While inv g body) =
-  [ foldr1 (<:>) $ insertConds $ concat paths
-  | unrolls <- [1..quot d 2]
-  , let paths = getMultiPaths (d - 2) (replicate unrolls body)
+  [ foldr1 (<:>) $ insertConds paths
+  | unrolls <- [1..(if even d then quot d 2 - 1 else quot d 2)]
+  , paths <- getMultiPaths (d - unrolls - 1) (replicate unrolls body)
   , not $ null paths
-  , let insertConds = foldr (\s -> (++) [assume inv g, s]) [assume inv (Not g)]
+  , let continue = assume inv g
+  , let break = assume inv $ Not g
+  , let insertConds = foldr (\s -> (++) (continue : seqsToList s)) [break]
   ]
 getPaths d stmt = [stmt | d == 1]
 
@@ -39,3 +42,7 @@ getMultiPaths' depth (stmt : stmts) =
 
 assume Nothing q = Assume q
 assume (Just p) q = Assume $ p /\ q
+
+seqsToList :: Stmt -> [Stmt]
+seqsToList (Seq s s') = seqsToList s ++ seqsToList s'
+seqsToList s = [s]

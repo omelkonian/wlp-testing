@@ -1,4 +1,4 @@
-{ ~ (n <= i) }
+{ i < n }
 MININD(a, i, n | r)
   var min in
     min, r := a[i], i;
@@ -7,7 +7,8 @@ MININD(a, i, n | r)
         min, r := a[i], i
       else
         skip
-    end;
-    i := i + 1
+      fi;
+      i := i + 1
+    end
   end
-{ (forall j:int :: (i <= j /\ j <= n) => ~ (a[j] < a[r])) }
+{ (forall j :: i <= j /\ j < n ==> a[r] <= a[j]) }
