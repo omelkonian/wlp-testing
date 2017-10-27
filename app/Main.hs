@@ -3,6 +3,7 @@ module Main where
 import Options.Applicative
 import Data.Semigroup ((<>))
 import Data.List (nub)
+import Data.Maybe (fromMaybe)
 import Control.Monad (when, unless)
 import Control.Monad.State (evalState)
 import Data.Foldable (for_)
@@ -16,7 +17,7 @@ import PrettyPrinter (pp, ln)
 import Paths (getAllPaths)
 import Renaming (rename)
 import Wlp (wlp, fixpointReplaceConds)
-import Normalizer (splitAssumptions)
+import Normalizer (normalize)
 import SAT (getVars, checkAssumptions, checkGoal, checkImmediate)
 
 
@@ -60,7 +61,8 @@ run (Options inputFile depthStart depthEnd debug) = do
         let replaced = fixpointReplaceConds predicate
         when debug $ putStrLn "Replaced: " >> pp replaced 0 >> ln
 
-        let (assumptions, goal) = splitAssumptions replaced
+        let (assumptions, g) = normalize replaced
+        let goal = fromMaybe (error "No goal") g
         when debug (do
           putStrLn "****** GOAL *******"
           putStr "Assumptions: " >> ln

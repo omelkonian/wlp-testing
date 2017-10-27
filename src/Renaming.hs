@@ -44,13 +44,17 @@ renameE (BinOp op e1 e2) = do
   e2' <- renameE e2
   return $ BinOp op e1' e2'
 renameE (Cond g et ef) = rename3 Cond g et ef
-renameE (Forall v e) = do
+renameE f@(Forall v e) = do
   counter <- get
   let n = length v
-  put (counter + n)
-  let v' = ["$" ++ show c | c <- [counter..(counter + n - 1)]]
-  e' <- renameE $ substE v v' e
-  return $ Forall v' e'
+  if head (head v) == '$' then do
+    e' <- renameE e
+    return $ Forall v e'
+  else do
+    put (counter + n)
+    let v' = ["$" ++ show c | c <- [counter..(counter + n - 1)]]
+    e' <- renameE $ substE v v' e
+    return $ Forall v' e'
 renameE (ArrayAccess v e) = rename1 (ArrayAccess v) e
 renameE (RepBy arr i e) = rename3 RepBy arr i e
 renameE e = return e

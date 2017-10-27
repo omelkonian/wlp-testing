@@ -9,7 +9,7 @@ import AST
 wlp :: Stmt -> Expr -> Expr
 wlp Skip q = q
 wlp (Assert p) q = p /\ q
-wlp (Assume p) q = p ==> q
+wlp (Assume p) q = markAssumption p ==> q
 wlp (Seq s1 s2) q = wlp s1 (wlp s2 q)
 wlp (Asg targets exprs) q = subst targets exprs q
 wlp (VarStmt targets body) q = wlp body q

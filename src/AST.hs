@@ -35,9 +35,15 @@ data Op = Plus | Minus | Imply | Lt | Eq deriving ( Eq
                                                   -- , Show
                                                   )
 
+markAssumption = Forall ["$assumption"]
+markGoal = Forall ["$goal"]
+
 hoarify :: Program -> Expr -> Expr -> Program
 hoarify prog pre post =
-  prog { body = Seq (Assume pre) (Seq (body prog) (Assert post)) }
+  prog { body = Assume pre
+            <:> body prog
+            <:> Assert (markGoal post)
+       }
 
 -- DSL
 infixr 1 <:>
