@@ -32,7 +32,6 @@ runExample n ex =
       let replaced = fixpointReplaceConds predicate
       let (assumptions, g) = normalize replaced
       let goal = fromMaybe (error "No goal") g
-      let vars = nub $ concatMap getVars assumptions
       -- trace (
       --   "Path: " ++ show renamed ++ "\n"
       --   ++ "WLP: " ++ show predicate ++ "\n"
@@ -41,7 +40,7 @@ runExample n ex =
       --   ++ "ASSUMPTIONS: " ++ show assumptions ++ "\n"
       --   ++ "GOAL: " ++ show goal ++ "\n"
       --   ) $ check vars assumptions goal
-      check vars assumptions goal
+      check assumptions goal
     )
 
 fullTest1 =

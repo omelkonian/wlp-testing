@@ -18,7 +18,7 @@ import Paths (getAllPaths)
 import Renaming (rename)
 import Wlp (wlp, fixpointReplaceConds)
 import Normalizer (normalize)
-import SAT (getVars, checkAssumptions, checkGoal, checkImmediate)
+import SAT (check)
 
 
 data Options = Options
@@ -51,16 +51,13 @@ run (Options inputFile depthStart depthEnd debug) = do
     Left err -> print err
     Right prog -> do
       when debug $ putStrLn "------ PROGRAM -------" >> ln >> pp prog 0 >> ln
-      for_ (getAllPaths depthStart depthEnd (body prog)) (\s -> do
-
-        let renamed = evalState (rename s) 0
+      for_ (getAllPaths depthStart depthEnd (body prog)) (\path -> do
+        let renamed = evalState (rename path) 0
         when debug $ putStrLn "====== PATH =======" >> pp renamed 0 >> ln
-
-        let predicate = wlp renamed (LitBool True)
+        let predicate = wlp renamed _T
         when debug $ putStrLn "------- WLP -------" >> pp predicate 0 >> ln
         let replaced = fixpointReplaceConds predicate
         when debug $ putStrLn "Replaced: " >> pp replaced 0 >> ln
-
         let (assumptions, g) = normalize replaced
         let goal = fromMaybe (error "No goal") g
         when debug (do
@@ -68,18 +65,6 @@ run (Options inputFile depthStart depthEnd debug) = do
           putStr "Assumptions: " >> ln
           for_ (nub assumptions) (\ass -> putStrLn $ "    " ++ show ass)
           putStr "Goal: " >> print goal)
-
         when debug $ putStrLn "^^^^^^ SAT ^^^^^^"
-        let vars = nub $ getVars replaced ++ getVars goal
-        when debug $ putStrLn $ "Vars: " ++ show vars
-
-        runSMT $ checkImmediate vars assumptions goal
-
-        -- solution <- runSMT $ checkAssumptions vars assumptions
-        -- when debug $ putStrLn $ "Model: " ++ show solution
-        -- case solution of
-        --   Just result -> do
-        --     res <- runSMT $ checkGoal result goal
-        --     putStrLn $ if res then "Pass" else "Fail"
-        --   Nothing -> putStrLn "Pass [Ignore]" -- no model for assumptions, so no relevant case
+        runSMT $ check assumptions goal
         )
