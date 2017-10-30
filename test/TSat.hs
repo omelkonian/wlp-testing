@@ -24,6 +24,15 @@ satTests =
   , satTest13
   , satTest14
   , satTest15
+  , satTest16
+  , satTest17
+  , satTest18
+  , satTest19
+  , satTest20
+  , satTest21
+  , satTest22
+  , satTest23
+  , satTest24
   ]
 
 satAss ass = unsafePerformIO $ runSMT $ do
@@ -101,18 +110,66 @@ testSat ass g = unsafePerformIO $ runSMT $ check ass g
 
 satTest13 = testSat ass g @?= "Fail"
   where
-      ass = [x .>= i (-1), Not $ x .> i 0]
-      g = y .= i 0
-      [x, y] = map n ["x", "y"]
+    ass = [x .>= i (-1), Not $ x .> i 0]
+    g = y .= i 0
+    [x, y] = map n ["x", "y"]
 
 satTest14 = testSat ass g @?= "Pass"
   where
-      ass = [x .>= i 1, x .< i 2, x .= y .+ i 1 .- i 0]
-      g = y .= i 0
-      [x, y] = map n ["x", "y"]
+    ass = [x .>= i 1, x .< i 2, x .= y .+ i 1 .- i 0]
+    g = y .= i 0
+    [x, y] = map n ["x", "y"]
 
 satTest15 = testSat ass g @?= "Fail"
   where
-      ass = [x .>= i 1, x .< i 2, x .= y .+ i 1 .- i 0]
-      g = y .> i 0 \/ y .= i 1
-      [x, y] = map n ["x", "y"]
+    ass = [x .>= i 1, x .< i 2, x .= y .+ i 1 .- i 0]
+    g = y .> i 0 \/ y .= i 1
+    [x, y] = map n ["x", "y"]
+
+satTest16 = testSat [] g @?= "Pass"
+  where
+    g = Forall ["x"] $ x .= i 1 ==> x .+ i 1 .= i 2
+    x = n "x"
+
+satTest17 = testSat [] g @?= "Fail"
+  where
+    g = Forall ["x"] $ x .= i 1 ==> x .+ i 1 .= i 1
+    x = n "x"
+
+satTest18 = testSat ass g @?= "Pass"
+  where
+    ass = [ x .= i 0 ]
+    g = a_x .= a_0
+    [x, a_x, a_0] = [n "x", "a" .! x, "a" .! i 0]
+
+satTest19 = testSat ass g @?= "Fail"
+  where
+    ass = [ x .= i 0 ]
+    g = a_x .= a_1
+    [x, a_x, a_1] = [n "x", "a" .! x, "a" .! i 1]
+
+satTest20 = testSat [] g @?= "Fail"
+  where
+    g = x .> i 1 ==> x .+ i 1 .= i 1
+    x = n "x"
+
+satTest21 = testSat [] g @?= "Fail"
+  where
+    g = Forall ["x"] $
+          (x .< i 1) /\ (x .< i 1 ==> x .+ i 1 .= i 1)
+    x = n "x"
+
+satTest22 = testSat [] g @?= "Fail"
+  where
+    g = Forall ["x"] $ x .< i 2 ==> x .+ i 1 .= i 1
+    x = n "x"
+
+satTest23 = testSat [] g @?= "Fail"
+  where
+    g = Forall ["x"] $ x .= i 2 ==> x .+ i 1 .= i 1
+    x = n "x"
+
+satTest24 = testSat [] g @?= "Fail"
+  where
+    g = "a" .! x .= i 0
+    x = n "x"

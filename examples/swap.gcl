@@ -1,9 +1,9 @@
 { a = i }
 SWAP(a, i, j | r)
   var tmp in
-    tmp := a[i];
+    b := a[i];
     a[i] := a[j];
-    a[j] := f;
+    a[j] := b;
     r := a
   end
 { i[i] = r[j] /\ i[j] = r[i] }

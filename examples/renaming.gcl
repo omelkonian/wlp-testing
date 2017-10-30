@@ -8,11 +8,11 @@ RENAMING(x|y)
       assert (i = 0)
     end;
     assume ~ (i < 0);
-    assert (i = 0 => true)
+    assert (i = 0 ==> true)
   end;
   assert x = 20;
   var i in
     i := 10;
     assert i = 10
   end
-{ (x - 1) = 0 }
+{ x - 1 = 0 }

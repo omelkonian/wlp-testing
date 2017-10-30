@@ -6,5 +6,6 @@ SIMPLE(x|y)
       else
         x := x - 1;
         x := x - 1
+      fi
     end
-{ x = -2 }
+{ x = -1 }

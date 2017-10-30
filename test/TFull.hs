@@ -16,38 +16,52 @@ import Normalizer
 import SAT
 import TExamples
 
-import Debug.Trace
-import PrettyPrinter (pp, ln)
-
 fullTests =
   [ fullTest1
   , fullTest2
+  , fullTest3
+  , fullTest4
+  , fullTest5
+  , fullTest6
   ]
 
+runExample :: Int -> Stmt -> [String]
 runExample n ex =
-  unsafePerformIO $ runSMT $
-    forM (take n $ getAllPaths 0 50 ex) (\path -> do
-      let renamed = evalState (rename path) 0
-      let predicate = wlp renamed _T
-      let replaced = fixpointReplaceConds predicate
-      let (assumptions, g) = normalize replaced
-      let goal = fromMaybe (error "No goal") g
-      -- trace (
-      --   "Path: " ++ show renamed ++ "\n"
-      --   ++ "WLP: " ++ show predicate ++ "\n"
-      --   ++ "WLP': " ++ show replaced ++ "\n"
-      --   ++ "VARS: " ++ show vars ++ "\n"
-      --   ++ "ASSUMPTIONS: " ++ show assumptions ++ "\n"
-      --   ++ "GOAL: " ++ show goal ++ "\n"
-      --   ) $ check vars assumptions goal
-      check assumptions goal
+  unsafePerformIO $ forM allPaths (\path -> do
+    let renamed = evalState (rename path) 0
+    let predicate = wlp renamed _T
+    let replaced = fixpointReplaceConds predicate
+    let (assumptions, g) = normalize replaced
+    let goal = fromMaybe (error "No goal") g
+    runSMT $ check assumptions goal
     )
+  where
+    allPaths = take n $ getAllPaths 0 50 ex
 
 fullTest1 =
   runExample 4 example @?= ["Fail", "Ignore", "Ignore", "Ignore"]
 
 fullTest2 =
-  runExample 7 minind @?= replicate 2 "Ignore"
+  runExample 4 example2 @?= replicate 4 "Pass"
+
+fullTest3 =
+  runExample 15 minind @?= replicate 2 "Ignore"
                           ++ replicate 1 "Pass"
                           ++ replicate 2 "Ignore"
                           ++ replicate 2 "Pass"
+                          ++ replicate 4 "Ignore"
+                          ++ replicate 4 "Pass"
+
+fullTest4 =
+  runExample 15 minind2 @?= replicate 2 "Ignore"
+                          ++ replicate 1 "Pass"
+                          ++ replicate 2 "Ignore"
+                          ++ replicate 2 "Fail"
+                          ++ replicate 4 "Ignore"
+                          ++ replicate 4 "Fail"
+
+fullTest5 =
+  runExample 15 loopInvariant @?= replicate 15 "Pass"
+
+fullTest6 =
+  runExample 1 swap @?= ["Pass"]

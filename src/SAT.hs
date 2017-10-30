@@ -64,7 +64,6 @@ getFreeVars e = getVars e \\ getBoundVars e
 
 genVars :: [String] -> Symbolic VarMap
 genVars vars = do
-  -- smtVars <- mapM forall vars
   smtVars <- sIntegers vars
   return $ M.fromList $ zip vars smtVars
 
@@ -139,17 +138,6 @@ checkAssumptions vs@(vars, _) assumptions = do
                     return (v, xv))
                   return $ Just $ M.fromList res
 
-checkAssumptionsAll :: (VarMap, UVarMap) -> [Expr] -> Symbolic [SMTResult]
-checkAssumptionsAll vs@(vars, _) assumptions = do
-  -- Contraints
-  let ass' = foldl (&&&) true (map (toSmtB vs) assumptions)
-  -- forM_ assumptions (toSmtB vs)
-  -- Query
-  query $ do
-    allModels <- io $ allSat ass'
-    case allModels of
-      AllSatResult (_, _, models) -> return models
-
 assign :: ResultMap -> Expr -> Expr
 assign model = subst vs es
   where (vs, es) = unzip $ map (second $ LitInt . fromInteger) $ M.toList model
@@ -158,7 +146,7 @@ checkGoal :: (ResultMap, VarMap, UVarMap) -> Expr -> Symbolic Bool
 checkGoal vs@(model, _, _) g = do
   -- Constraint
   let g' = assign model g
-  let b = trace ("Goal: " ++ show g') $ toGSmtB vs g'
+  let b = toGSmtB vs g'
   case show b of
     "True" -> return True
     "False" -> return False
@@ -174,6 +162,8 @@ checkGoal vs@(model, _, _) g = do
 
 check :: [Expr] -> Expr -> Symbolic String
 check assumptions goal = do
+  -- Set logic
+  -- setLogic UFNIA
   -- Generate vars
   let vars = getManyVars assumptions
   let uVars = getManyUVars assumptions
@@ -184,61 +174,39 @@ check assumptions goal = do
           checkAssumptions (smtVars, smtUVars) assumptions
   case res of
     Nothing -> return "Ignore"
-    Just model ->
-      if not (all (`elem` vars) (getFreeVars goal)) then
-        return "Fail"
-      else do
-        -- Model assignment
-        let goal' = assign model goal
-        let ass' = map (assign model) $ filter containsArray assumptions
-        -- Generation
-        let gVars = getVars goal'
-        let gUVars = getUVars goal'
-        if null gVars then do
+    Just model -> do
+      -- Model assignment
+      let goal' = assign model goal
+      let ass' = map (assign model) $ filter containsArray assumptions
+      -- Re-normalize
+      let (newAssumptions, newGoal) = normalize' goal'
+      -- Query
+      query $ do
+        -- io $ do
+        --   putStrLn $ "Assumptions: " ++ show assumptions
+        --   putStrLn $ "Goal: " ++ show goal
+        --   putStrLn $ "Model: " ++ show model
+        --   putStrLn $ "Assumptions2: " ++ show ass'
+        --   putStrLn $ "Goal2: " ++ show goal'
+        --   putStrLn $ "NewAssumptions: " ++ show newAssumptions
+        --   putStrLn $ "NewGoal: " ++ show newGoal
+
+        res <- io $ proveZ $ do
+          -- Generation
+          let gVars = getVars newGoal
+          let gUVars = getUVars newGoal
           gSmtVars <- genVars gVars
           gSmtUVars <- genUVars gUVars
-          let args = (model, gSmtVars, gSmtUVars)
           -- Assumptions
-          let smtAss = foldl (&&&) true $ map (toGSmtB args) ass'
+          let args = (model, gSmtVars, gSmtUVars)
+          let smtAss = foldl (&&&) true $ map (toGSmtB args) (ass' ++ newAssumptions)
+          constrain smtAss
           -- Goal
-          let smtGoal = toGSmtB args goal'
-          -- Query
-          query $ do
-            res <- io $ prove $ smtAss ==> smtGoal
-            case show res of
-              "Falsifiable" -> return "Fail"
-              _ -> return "Pass"
-        else do
-          let (ass, g) = normalize' goal'
-          let vars = getManyVars ass
-          let uVars = getManyUVars ass
-          let res =
-                unsafePerformIO $ runSMT $ do
-                  smtVars <- genVars vars
-                  smtUVars <- genUVars uVars
-                  checkAssumptionsAll (smtVars, smtUVars) ass
+          return $ toGSmtB args newGoal
+          
+        case show res of
+          "Q.E.D." -> return "Pass"
+          _ -> return "Fail"
 
-          query $ io $ forM_ res (\r ->
-            case r of
-              Satisfiable _ i -> print i
-            )
-
-          if null res then
-            return "Pass"
-          else do
-            results <- forM res (\r ->
-              case r of
-                Satisfiable _ assignments -> do
-                  res <- checkAssignment g (modelAssocs assignments)
-                  if res then
-                    return True
-                  else
-                    return False
-              )
-            if and results then
-              return "Pass"
-            else
-              return "Fail"
-
-checkAssignment :: Expr -> [(String, CW)] -> Symbolic Bool
-checkAssignment g modelAssoc = return True
+proveZ :: Provable a => a -> IO ThmResult
+proveZ = proveWith z3{verbose=False}

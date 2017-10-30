@@ -51,7 +51,7 @@ simpleProgramP = do
 
 -- Statements
 stmtP :: Parser Stmt
-stmtP = buildExpressionParser table term <?> "expression"
+stmtP = buildExpressionParser table term <?> "statement"
   where table = [ [infix_ ";" (<:>)] ]
         term = try varStmtP <|>
                try whileP <|>
@@ -59,7 +59,7 @@ stmtP = buildExpressionParser table term <?> "expression"
                try asgP <|>
                try assumeP <|>
                try assertP <|>
-               skipP <?> "statement"
+               skipP <?> "statement term"
 
 skipP :: Parser Stmt
 skipP = Skip <$ str "skip"
@@ -91,6 +91,7 @@ iteP = do
   expr <- "if" ~> exprP
   stmtT <- "then" ~> stmtP
   stmtF <- "else" ~> stmtP <~ "fi"
+  _ <- trace ("ITE: " ++ show (Ite expr stmtT stmtF)) $ return ()
   return $ Ite expr stmtT stmtF
 
 whileP :: Parser Stmt
@@ -122,8 +123,8 @@ exprP =
                 , [ infix_ "\\/" (\/) ]
                 , [ infix_ "==>" (==>) ]
                 ]
-        term = try arrayAccessP <|>
-               try (parens exprP) <|>
+        term = try (parens exprP) <|>
+               try arrayAccessP <|>
                try forallP <|>
                primitiveP <?> "term"
 

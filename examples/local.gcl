@@ -8,5 +8,6 @@ LOCAL(x|y)
     else
       x := 6;
       y := 0
+    fi
   end
 { x = 5 /\ y = 0 }

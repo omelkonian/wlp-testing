@@ -9,20 +9,23 @@ import AST
 import SAT
 
 satArrayTests =
-  [ satTest12
-  -- , satTest2
-  -- , satTest3
-  -- , satTest4
-  -- , satTest5
-  -- , satTest6
-  -- , satTest7
-  -- , satTest8
-  -- , satTest9
-  -- , satTest10
-  -- , satTest11
-  -- , satTest12
-  -- , satTest13
-  -- , satTest14
+  [ satTest1
+  , satTest2
+  , satTest3
+  , satTest4
+  , satTest5
+  , satTest6
+  , satTest7
+  , satTest8
+  , satTest9
+  , satTest10
+  , satTest11
+  , satTest12
+  , satTest13
+  , satTest14
+  , satTest15
+  , satTest16
+  , satTest17
   ]
 
 testSat ass g = unsafePerformIO $ runSMT $ check ass g
@@ -115,8 +118,8 @@ satTest12 = testSat ass g @?= "Pass"
 
 satTest13 = testSat ass g @?= "Fail"
   where
-    ass = [a_0 .= i 0]
-    g = Forall ["j"] $ j .< i 2 ==> a_j .= i 0
+    ass = []
+    g = j .< i 2 ==> a_j .= i 0
     j = n "j"
     [a_0, a_j] = ["a" .! i 0, "a" .! j]
 
@@ -126,3 +129,20 @@ satTest14 = testSat ass g @?= "Pass"
     g = Forall ["j"] $ j .= i 0 \/ j .= i 1 ==> a_j .= i 0
     j = n "j"
     [a_0, a_1, a_j] = ["a" .! i 0, "a" .! i 1, "a" .! j]
+
+satTest15 = testSat [] g @?= "Fail"
+  where
+    g = Forall ["x"] $ x .= i 1 ==> a_x .= a_0
+    [x, a_x, a_0] = [n "x", "a" .! x, "a" .! i 0]
+
+satTest16 = testSat ass g @?= "Pass"
+  where
+    ass = [a_0 .= i 1, a_1 .= i 1]
+    g = Forall ["x"] $ x .= i 0 \/ x .= i 1 ==> a_x .=  i 1
+    [x, a_x, a_0, a_1] = [n "x", "a" .! x, "a" .! i 0, "a" .! i 1]
+
+satTest17 = testSat ass g @?= "Fail"
+  where
+    ass = [a_0 .= i 1, a_1 .= i 1]
+    g = Forall ["x"] $ x .= i 0 \/ x .= i 2 ==> a_x .=  i 1
+    [x, a_x, a_0, a_1] = [n "x", "a" .! x, "a" .! i 0, "a" .! i 1]

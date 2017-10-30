@@ -1,4 +1,4 @@
-{ x != 10 }
+{ true }
 ARITH(x|y)
     { z = 1 + 1 }
     while false do

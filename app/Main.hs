@@ -66,5 +66,6 @@ run (Options inputFile depthStart depthEnd debug) = do
           for_ (nub assumptions) (\ass -> putStrLn $ "    " ++ show ass)
           putStr "Goal: " >> print goal)
         when debug $ putStrLn "^^^^^^ SAT ^^^^^^"
-        runSMT $ check assumptions goal
+        res <- runSMT $ check assumptions goal
+        print res
         )
