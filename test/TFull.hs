@@ -22,7 +22,6 @@ fullTests =
   , fullTest3
   , fullTest4
   , fullTest5
-  , fullTest6
   ]
 
 runExample :: Int -> Stmt -> [String]
@@ -30,8 +29,7 @@ runExample n ex =
   unsafePerformIO $ forM allPaths (\path -> do
     let renamed = evalState (rename path) 0
     let predicate = wlp renamed _T
-    let replaced = fixpointReplaceConds predicate
-    let (assumptions, g) = normalize replaced
+    let (assumptions, g) = normalize predicate
     let goal = fromMaybe (error "No goal") g
     runSMT $ check assumptions goal
     )
@@ -53,15 +51,7 @@ fullTest3 =
                           ++ replicate 4 "Pass"
 
 fullTest4 =
-  runExample 15 minind2 @?= replicate 2 "Ignore"
-                          ++ replicate 1 "Pass"
-                          ++ replicate 2 "Ignore"
-                          ++ replicate 2 "Fail"
-                          ++ replicate 4 "Ignore"
-                          ++ replicate 4 "Fail"
-
-fullTest5 =
   runExample 15 loopInvariant @?= replicate 15 "Pass"
 
-fullTest6 =
+fullTest5 =
   runExample 1 swap @?= ["Pass"]

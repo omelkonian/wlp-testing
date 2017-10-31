@@ -8,6 +8,7 @@ import TNorm
 import TSat
 import TSatArray
 import TFull
+import TInputs
 
 main = defaultMain
   [ constructTestSuite testName testSuite
@@ -18,6 +19,7 @@ main = defaultMain
                              , ("SAT", satTests)
                              , ("SAT_ARRAYS", satArrayTests)
                              , ("FULL", fullTests)
+                             , ("INPUTS", inputTests)
                              ]
   ]
 

@@ -1,18 +1,17 @@
 { x = 20 }
 RENAMING(x|y)
+  i := 19;
+  assume i > 0;
   var i in
     i := 10;
     var i in
       i := 0;
-      i := i + 1;
-      assert (i = 0)
+      i := i + 1
     end;
-    assume ~ (i < 0);
-    assert (i = 0 ==> true)
+    assume ~ (i < 0)
   end;
-  assert x = 20;
+  assume i > 0;
   var i in
-    i := 10;
-    assert i = 10
+    i := 10
   end
-{ x - 1 = 0 }
+{ x - i = 1 }

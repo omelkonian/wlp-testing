@@ -55,9 +55,9 @@ wlpTest3 = stripMarks (head (getAllPaths 0 9 prog) `wlp` _T) @?= wlp'
   where
     prog = swap
     wlp' =
-      a .= a0 ==>
-        Cond (i .= j) a_i (Cond (i .= i) a_j a_i) .= a0_j
+      x .= a_i /\ y .= a_j ==>
+        x .= Cond (j .= j) a_i (Cond (j .= i) a_j a_j)
           /\
-        Cond (j .= j) a_i (Cond (j .= i) a_j a_j) .= a0_i
-    [a, a0, i, j] = map n ["a", "a0", "i", "j"]
-    [a_i, a_j, a0_i, a0_j] = ["a".!i, "a".!j, "a0".!i, "a0".!j]
+        y .= Cond (i .= j) a_i (Cond (i .= i) a_j a_i)
+    [x, y, a, i, j, tmp] = map n ["x", "y", "a", "i", "j", "tmp"]
+    [a_i, a_j] = ["a".!i, "a".!j]

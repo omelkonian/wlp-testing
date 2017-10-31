@@ -91,7 +91,6 @@ iteP = do
   expr <- "if" ~> exprP
   stmtT <- "then" ~> stmtP
   stmtF <- "else" ~> stmtP <~ "fi"
-  _ <- trace ("ITE: " ++ show (Ite expr stmtT stmtF)) $ return ()
   return $ Ite expr stmtT stmtF
 
 whileP :: Parser Stmt

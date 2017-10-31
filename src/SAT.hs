@@ -72,49 +72,53 @@ genUVars vars = do
   let f = map uninterpret vars
   return $ M.fromList $ zip vars f
 
-toSmt :: (VarMap, UVarMap) -> Expr -> SInteger
-toSmt vs (LitInt i) = literal $ toInteger i
-toSmt (vs, _) (Name v) =
-  fromMaybe (
-    error $ "Inconsistent VarMap: " ++ show v ++ " does not appear in " ++ show vs
-    ) (M.lookup v vs)
-toSmt vs (BinOp Plus e e') = toSmt vs e + toSmt vs e'
-toSmt vs (BinOp Minus e e') = toSmt vs e - toSmt vs e'
-toSmt v@(_, uvs) (ArrayAccess a e) = u (toSmt v e)
+
+smtOp Plus = (+)
+smtOp Minus = (-)
+toSmt :: (VarMap, UVarMap) -> Expr -> Symbolic SInteger
+toSmt vs (LitInt i) = return $ literal (toInteger i)
+toSmt (vs, _) (Name v) = return $
+  fromMaybe (error "Inconsistent VarMap") (M.lookup v vs)
+toSmt vs (BinOp op e e') = do
+  ve <- toSmt vs e
+  ve' <- toSmt vs e'
+  return $ smtOp op ve ve'
+toSmt v@(_, uvs) (ArrayAccess a e) = do
+  v <- toSmt v e
+  return $ u v
   where
     u = fromMaybe (error $ "Inconsistent UVarMap: " ++ show a) (M.lookup a uvs)
+toSmt vs (Cond g et ef) = do
+  x <- free_
+  vg <- toSmtB vs g
+  vt <- toSmt vs et
+  vf <- toSmt vs ef
+  constrain $ vg ||| bnot vg
+  constrain $ vg ==> x .== vt
+  constrain $ bnot vg ==> x .== vf
+  return x
 toSmt _ _ = error "toSmt cannot handle logical expressions"
 
-toSmtB :: (VarMap, UVarMap) -> Expr -> SBool
-toSmtB vs (LitBool b) = fromBool b
-toSmtB vs (BinOp Eq e e') = toSmt vs e .== toSmt vs e'
-toSmtB vs (BinOp Lt e e') = toSmt vs e .< toSmt vs e'
-toSmtB vs (Not e) = bnot $ toSmtB vs e
-toSmtB vs (BinOp Imply p q) = toSmtB vs p ==> toSmtB vs q
+smtOpB Eq = (.==)
+smtOpB Lt = (.<)
+toSmtB :: (VarMap, UVarMap) -> Expr -> Symbolic SBool
+toSmtB vs (LitBool b) = return $ fromBool b
+toSmtB vs (BinOp op e e') =
+  case op of
+    Imply -> do
+      ve <- toSmtB vs e
+      ve' <- toSmtB vs e'
+      return $ ve ==> ve'
+    _ -> do
+      ve <- toSmt vs e
+      ve' <- toSmt vs e'
+      return $ smtOpB op ve ve'
+toSmtB vs (Not e) = do
+  v <- toSmtB vs e
+  return $ bnot v
+-- toSmtB vs (BinOp Imply p q) = toSmtB vs p ==> toSmtB vs q
 toSmtB vs (Forall _ e) = toSmtB vs e
-toSmtB _ _ = error "toSmtB cannot handle arithmetic expressions"
-
-toGSmt :: (ResultMap, VarMap, UVarMap) -> Expr -> SInteger
-toGSmt vs (LitInt i) = literal $ toInteger i
-toGSmt (model, vs, _) (Name v) =
-  case M.lookup v model of
-    Nothing -> fromMaybe (error "Inconsistent") (M.lookup v vs)
-    Just i -> literal $ toInteger i
-toGSmt vs (BinOp Plus e e') = toGSmt vs e + toGSmt vs e'
-toGSmt vs (BinOp Minus e e') = toGSmt vs e - toGSmt vs e'
-toGSmt v@(_, _, uvs) (ArrayAccess a e) = u $ toGSmt v e
-  where
-    u = fromMaybe (error $ "Inconsistent UVarMap: " ++ show a) (M.lookup a uvs)
-toGSmt _ _ = error "toSmt cannot handle logical expressions"
-
-toGSmtB :: (ResultMap, VarMap, UVarMap) -> Expr -> SBool
-toGSmtB vs (LitBool b) = fromBool b
-toGSmtB vs (BinOp Eq e e') = toGSmt vs e .== toGSmt vs e'
-toGSmtB vs (BinOp Lt e e') = toGSmt vs e .< toGSmt vs e'
-toGSmtB vs (Not e) = bnot $ toGSmtB vs e
-toGSmtB vs (BinOp Imply p q) = toGSmtB vs p ==> toGSmtB vs q
-toGSmtB vs (Forall _ e) = toGSmtB vs e
-toGSmtB _ _ = error "toSmtB cannot handle arithmetic expressions"
+toSmtB _ e = error $ "toSmtB cannot handle arithmetic expressions: " ++ show e
 
 containsArray :: Expr -> Bool
 containsArray ArrayAccess {} = True
@@ -126,7 +130,8 @@ containsArray _ = False
 checkAssumptions :: (VarMap, UVarMap) -> [Expr] -> Symbolic (Maybe ResultMap)
 checkAssumptions vs@(vars, _) assumptions = do
   -- Contraints
-  forM_ assumptions (constrain . toSmtB vs)
+  assumptions' <- mapM (toSmtB vs) assumptions
+  forM_ assumptions' constrain
   -- Query
   query $ do
     cs <- checkSat
@@ -142,28 +147,11 @@ assign :: ResultMap -> Expr -> Expr
 assign model = subst vs es
   where (vs, es) = unzip $ map (second $ LitInt . fromInteger) $ M.toList model
 
-checkGoal :: (ResultMap, VarMap, UVarMap) -> Expr -> Symbolic Bool
-checkGoal vs@(model, _, _) g = do
-  -- Constraint
-  let g' = assign model g
-  let b = toGSmtB vs g'
-  case show b of
-    "True" -> return True
-    "False" -> return False
-    _ -> case show b of
-           "True" -> return True
-           "False" -> return False
-           _ -> query $ do
-                res <- io $ prove b
-                io $ print res
-                case show res of
-                  "Falsifiable" -> return False
-                  _ -> return True
 
 check :: [Expr] -> Expr -> Symbolic String
 check assumptions goal = do
   -- Set logic
-  -- setLogic UFNIA
+  setLogic UFNIA
   -- Generate vars
   let vars = getManyVars assumptions
   let uVars = getManyUVars assumptions
@@ -183,27 +171,24 @@ check assumptions goal = do
       -- Query
       query $ do
         -- io $ do
-        --   putStrLn $ "Assumptions: " ++ show assumptions
-        --   putStrLn $ "Goal: " ++ show goal
-        --   putStrLn $ "Model: " ++ show model
-        --   putStrLn $ "Assumptions2: " ++ show ass'
-        --   putStrLn $ "Goal2: " ++ show goal'
-        --   putStrLn $ "NewAssumptions: " ++ show newAssumptions
-        --   putStrLn $ "NewGoal: " ++ show newGoal
-
+        --  putStrLn $ "Assumptions: " ++ show assumptions
+        --  putStrLn $ "Goal: " ++ show goal
+        --  putStrLn $ "Model: " ++ show model
+        --  putStrLn $ "Assumptions2: " ++ show ass'
+        --  putStrLn $ "Goal2: " ++ show goal'
+        --  putStrLn $ "NewAssumptions: " ++ show newAssumptions
+        --  putStrLn $ "NewGoal: " ++ show newGoal
         res <- io $ proveZ $ do
           -- Generation
-          let gVars = getVars newGoal
-          let gUVars = getUVars newGoal
-          gSmtVars <- genVars gVars
-          gSmtUVars <- genUVars gUVars
+          gSmtVars <- genVars (getVars newGoal)
+          gSmtUVars <- genUVars (getUVars newGoal)
+          let args = (gSmtVars, gSmtUVars)
           -- Assumptions
-          let args = (model, gSmtVars, gSmtUVars)
-          let smtAss = foldl (&&&) true $ map (toGSmtB args) (ass' ++ newAssumptions)
-          constrain smtAss
+          let allAssumptions = ass' ++ newAssumptions
+          allAssumptions' <- mapM (toSmtB args) allAssumptions
+          forM_ allAssumptions' constrain
           -- Goal
-          return $ toGSmtB args newGoal
-          
+          toSmtB args newGoal
         case show res of
           "Q.E.D." -> return "Pass"
           _ -> return "Fail"

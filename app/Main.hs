@@ -10,13 +10,14 @@ import Data.Foldable (for_)
 import qualified Data.Map as M
 import Text.Parsec (parse, parseTest)
 import Data.SBV (runSMT, sIntegers)
+import System.Console.ANSI
 
 import AST
 import Parser (programP)
 import PrettyPrinter (pp, ln)
 import Paths (getAllPaths)
 import Renaming (rename)
-import Wlp (wlp, fixpointReplaceConds)
+import Wlp (wlp)
 import Normalizer (normalize)
 import SAT (check)
 
@@ -49,23 +50,17 @@ run (Options inputFile depthStart depthEnd debug) = do
   program <- readFile inputFile
   case parse programP "" program of
     Left err -> print err
-    Right prog -> do
-      when debug $ putStrLn "------ PROGRAM -------" >> ln >> pp prog 0 >> ln
+    Right prog ->
       for_ (getAllPaths depthStart depthEnd (body prog)) (\path -> do
         let renamed = evalState (rename path) 0
-        when debug $ putStrLn "====== PATH =======" >> pp renamed 0 >> ln
         let predicate = wlp renamed _T
-        when debug $ putStrLn "------- WLP -------" >> pp predicate 0 >> ln
-        let replaced = fixpointReplaceConds predicate
-        when debug $ putStrLn "Replaced: " >> pp replaced 0 >> ln
-        let (assumptions, g) = normalize replaced
+        let (assumptions, g) = normalize predicate
         let goal = fromMaybe (error "No goal") g
-        when debug (do
-          putStrLn "****** GOAL *******"
-          putStr "Assumptions: " >> ln
-          for_ (nub assumptions) (\ass -> putStrLn $ "    " ++ show ass)
-          putStr "Goal: " >> print goal)
-        when debug $ putStrLn "^^^^^^ SAT ^^^^^^"
         res <- runSMT $ check assumptions goal
-        print res
+        let color = case res of "Pass" -> Green
+                                "Ignore" -> Yellow
+                                "Fail" -> Red
+        setSGR [SetColor Foreground Vivid color]
+        putStrLn res
+        setSGR [Reset]
         )
