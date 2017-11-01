@@ -1,11 +1,11 @@
 { x > 0 }
 LOOP(x|y)
   y_outer := 0;
-  var y in
+  var (y) in
     y := 0;
     while (x > 0) do
-      y := y + 1;
-      x := x - 1
+      y++;
+      x--
     end;
     y_outer := y
   end

@@ -1,7 +1,0 @@
-{ x >= -1 }
-E(x | y)
-  while (x < 0) do
-    x := x + 1;
-    y:=x
-  end
-{ y = 0 }

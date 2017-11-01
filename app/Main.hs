@@ -53,9 +53,16 @@ run (Options inputFile depthStart depthEnd debug) = do
     Right prog ->
       for_ (getAllPaths depthStart depthEnd (body prog)) (\path -> do
         let renamed = evalState (rename path) 0
+        when debug $ putStrLn "====== PATH =======" >> pp renamed 0 >> ln
         let predicate = wlp renamed _T
+        when debug $ putStrLn "------- WLP -------" >> pp predicate 0 >> ln
         let (assumptions, g) = normalize predicate
         let goal = fromMaybe (error "No goal") g
+        when debug (do
+          putStrLn "****** GOAL *******"
+          putStr "Assumptions: " >> ln
+          for_ assumptions (\ass -> putStrLn $ "    " ++ show ass)
+          putStr "Goal: " >> print goal)
         res <- runSMT $ check assumptions goal
         let color = case res of "Pass" -> Green
                                 "Ignore" -> Yellow

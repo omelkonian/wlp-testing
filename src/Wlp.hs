@@ -4,11 +4,20 @@ import Data.List (elemIndex, nub)
 import qualified Data.Map as M
 
 import AST
+import Debug.Trace
 
 
 wlp :: Stmt -> Expr -> Expr
 wlp Skip q = q
-wlp (Assert p) q = p /\ q
+wlp s@(Assert a) q =
+  case q of
+    Forall ["$goal"] q ->
+      markGoal $ a /\ q
+    (BinOp Imply p@(Forall ["$assumption"] _) q) ->
+      p ==> wlp s q
+    (LitBool True) ->
+      a
+    _ -> error $ "Assert on " ++ show q
 wlp (Assume p) q = markAssumption p ==> q
 wlp (Seq s1 s2) q = wlp s1 (wlp s2 q)
 wlp (Asg targets exprs) q = subst targets exprs q

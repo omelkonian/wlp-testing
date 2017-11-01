@@ -1,10 +1,9 @@
 { x < 12 }
 E(x|y)
-  var i in
+  var (i) in
     i := 12;
     while (i > 0) do
-      x := x - 1;
-      i := i - 1
+      x--; i--
     end
   end
 { x < 0 }

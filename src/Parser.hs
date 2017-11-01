@@ -51,18 +51,44 @@ simpleProgramP = do
 
 -- Statements
 stmtP :: Parser Stmt
-stmtP = buildExpressionParser table term <?> "statement"
+stmtP = buildExpressionParser table term
   where table = [ [infix_ ";" (<:>)] ]
-        term = try varStmtP <|>
-               try whileP <|>
-               try iteP <|>
-               try asgP <|>
-               try assumeP <|>
-               try assertP <|>
-               skipP <?> "statement term"
+        term = try (varStmtP <?> "var") <|>
+               try (whileP <?> "while") <|>
+               try (iteP <?> "ite") <|>
+               try (asgP <?> "asg") <|>
+               try (assumeP <?> "assume") <|>
+               try (assertP <?> "assert") <|>
+               try (addP <?> "add") <|>
+               try (subP <?> "sub") <|>
+               try (incrementP <?> "inc") <|>
+               try (decrementP <?> "dec") <|>
+               skipP <?> "skip"
 
 skipP :: Parser Stmt
-skipP = Skip <$ str "skip"
+skipP = Skip <$ string "skip"
+
+incrementP :: Parser Stmt
+incrementP = do
+  x <- nameP <* string "++"
+  return $ [x] .:= [n x .+ i 1]
+
+decrementP :: Parser Stmt
+decrementP = do
+  x <- nameP <* string "--"
+  return $ [x] .:= [n x .- i 1]
+
+addP :: Parser Stmt
+addP = do
+  x <- nameP <~ "+="
+  e <- exprP
+  return $ [x] .:= [n x .+ e]
+
+subP :: Parser Stmt
+subP = do
+  x <- nameP <~ "-="
+  e <- exprP
+  return $ [x] .:= [n x .- e]
 
 assertP :: Parser Stmt
 assertP = Assert <$> "assert" ~> exprP
@@ -98,11 +124,13 @@ whileP = do
   invariant <- optionMaybe $ "{" ~> exprP <~ "}"
   expr <- "while" ~> exprP
   stmt <- "do" ~> stmtP <~ "end"
-  return $ While invariant expr stmt
+  return $ case invariant of
+    i@(Just inv) -> Assert inv <:> While i expr (stmt <:> Assert inv)
+    _ -> While Nothing expr stmt
 
 varStmtP :: Parser Stmt
 varStmtP = do
-  vars <- "var" ~> (nameP `sepBy1` char ',')
+  vars <- "var (" ~> (nameP `sepBy1` lexeme (char ',')) <~ ")"
   stmt <- "in" ~> stmtP <~ "end"
   return $ VarStmt vars stmt
 

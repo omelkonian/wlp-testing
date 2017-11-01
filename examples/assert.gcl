@@ -1,0 +1,10 @@
+{ x > 0 }
+ASSERT(x|y)
+  x += 5;
+  assert x > 5;
+  if x > 5 then
+    x += 5
+  else
+    skip
+  fi
+{ x > 10 }

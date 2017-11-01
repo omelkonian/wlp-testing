@@ -1,0 +1,13 @@
+{ x > 2 }
+LOOP_INV(x|y)
+  var (k,y) in
+    y := 2;
+    k := y;
+    { x > 0 }
+    while y > 0 do
+      x--; y--
+    end;
+    assert y = 0;
+    x += k
+  end
+{ x > 2 }

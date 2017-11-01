@@ -1,6 +1,6 @@
 { x = a[i] /\ y = a[j] /\ i != j /\ a[i] != a[j] }
 SWAP(a, i, j | r)
-  var b in
+  var (b) in
     b := a[i];
     a[i] := a[j];
     a[j] := b;

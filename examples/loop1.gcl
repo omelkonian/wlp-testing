@@ -2,10 +2,9 @@
 SIMPLE(x|y)
     while (x >= 0) do
       if (x = 0) then
-        x := x - 1
+        x--
       else
-        x := x - 1;
-        x := x - 1
+        x--; x--
       fi
     end
 { x = -1 }
