@@ -1,0 +1,7 @@
+{ x > 5 }
+FORALL(x | y)
+  { (forall i, j :: i <= 2 /\ j <= 2 ==> i + j < x - 1) }
+  while x > 5 do
+    x--
+  end
+{ true }

@@ -34,10 +34,8 @@ subst ts es (BinOp op e1 e2) =
   BinOp op (subst ts es e1) (subst ts es e2)
 subst ts es (Cond g et ef) =
   Cond (subst ts es g) (subst ts es et) (subst ts es ef)
-subst ts es (Forall vs e) =
-  Forall vs e'
-  where e' = subst ts' es' e
-        (ts', es') = unzip $ filter (\(t, _) -> t `notElem` vs) (zip ts es)
+subst ts es (Forall vs e) = substSub ts es Forall vs e
+subst ts es (Exist vs e) = substSub ts es Exist vs e
 subst ts es (ArrayAccess arr index) =
   case arr `elemIndex` ts of
     Just i ->
@@ -52,3 +50,8 @@ subst ts es (ArrayAccess arr index) =
 subst ts es (RepBy arr i e) =
   RepBy (subst ts es arr) (subst ts es i) (subst ts es e)
 subst _ _ q = q
+
+substSub ts es cons vs e =
+  cons vs e'
+  where e' = subst ts' es' e
+        (ts', es') = unzip $ filter (\(t, _) -> t `notElem` vs) (zip ts es)

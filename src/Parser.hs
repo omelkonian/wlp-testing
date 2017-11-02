@@ -130,7 +130,7 @@ whileP = do
 
 varStmtP :: Parser Stmt
 varStmtP = do
-  vars <- "var (" ~> (nameP `sepBy1` lexeme (char ',')) <~ ")"
+  vars <- "var" ~> commas nameP
   stmt <- "in" ~> stmtP <~ "end"
   return $ VarStmt vars stmt
 
@@ -176,9 +176,9 @@ forallP = "(" ~> (forall <|> exists) <~ ")"
          expr <- "::" ~> exprP
          return $ Forall vs expr
         exists = do
-         vs <- "exists" ~> commas nameP
+         vs <- "exist" ~> commas nameP
          expr <- "::" ~> exprP
-         return $ Not (Forall vs (Not expr))
+         return $ Exist vs expr
 
 arrayAccessP :: Parser Expr
 arrayAccessP = do

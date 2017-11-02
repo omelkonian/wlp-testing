@@ -30,10 +30,16 @@ inputTests =
   , loopInvariant2
   , loopInvariant3
   , loopInvariant4
+  , loopInvariantForall
+  , loopInvariantForallFail
+  , prenex
   , unfold
   , unfoldFail
   , example
   , minind
+  , maxind
+  , minindFail
+  , minindFail2
   , swap
   , swapFail
   ]
@@ -69,9 +75,15 @@ loopInvariant = pass 5 "examples/loop_invariant.gcl"
 loopInvariant2 = pass 5 "examples/loop_invariant2.gcl"
 loopInvariant3 = pass 5 "examples/loop_invariant3.gcl"
 loopInvariant4 = pass 4 "examples/loop_invariant4.gcl"
+loopInvariantForall = pass 4 "examples/loop_invariant_forall.gcl"
+loopInvariantForallFail = fail 4 "examples/loop_invariant_forall_fail.gcl"
+prenex = pass 20 "examples/prenex.gcl"
 unfold = pass 13 "examples/unfold.gcl"
 unfoldFail = fail 13 "examples/unfold_fail.gcl"
 example = fail 5 "examples/example.gcl"
 minind = pass 10 "examples/minind.gcl"
+maxind = pass 10 "examples/maxind.gcl"
+minindFail = fail 10 "examples/minind_fail.gcl"
+minindFail2 = fail 10 "examples/minind_fail2.gcl"
 swap = pass 1 "examples/swap.gcl"
 swapFail = fail 1 "examples/swap_fail.gcl"

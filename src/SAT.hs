@@ -14,10 +14,7 @@ import qualified Data.Map as M
 
 import AST hiding ((==>), (.<), (.>), name)
 import Wlp (subst)
-import Normalizer (normalize')
-
-import Debug.Trace
-
+import Normalizer (normalize', toPrenexFormFixpoint)
 
 type VarMap = M.Map String SInteger
 type UVarMap = M.Map String (SInteger -> SInteger)
@@ -33,6 +30,7 @@ getVars' (BinOp _ e e') = getVars' e ++ getVars' e'
 getVars' (Not e) = getVars' e
 getVars' (Cond g et ef) = getVars' g ++ getVars' et ++ getVars' ef
 getVars' (Forall vs e) = vs ++ getVars' e
+getVars' (Exist _ e) = getVars' e
 getVars' (ArrayAccess v e) = getVars' e
 getVars' _ = []
 
@@ -45,8 +43,22 @@ getUVars' (BinOp _ e e') = getUVars' e ++ getUVars' e'
 getUVars' (Not e) = getUVars' e
 getUVars' (Cond g et ef) = getUVars' g ++ getUVars' et ++ getUVars' ef
 getUVars' (Forall _ e) = getUVars' e
+getUVars' (Exist _ e) = getUVars' e
 getUVars' (ArrayAccess v e) = v : getUVars' e
 getUVars' _ = []
+
+getManyEVars :: [Expr] -> [String]
+getManyEVars e = nub $ concatMap getUVars e
+getEVars :: Expr -> [String]
+getEVars e = nub $ getUVars' e
+getEVars' :: Expr -> [String]
+getEVars' (BinOp _ e e') = getEVars' e ++ getEVars' e'
+getEVars' (Not e) = getEVars' e
+getEVars' (Cond g et ef) = getEVars' g ++ getEVars' et ++ getEVars' ef
+getEVars' (Forall _ e) = getEVars' e
+getEVars' (Exist vs e) = vs ++ getEVars' e
+getEVars' (ArrayAccess v e) = v : getEVars' e
+getEVars' _ = []
 
 getBoundVars :: Expr -> [String]
 getBoundVars e = nub $ getBoundVars' e
@@ -72,18 +84,24 @@ genUVars vars = do
   let f = map uninterpret vars
   return $ M.fromList $ zip vars f
 
+genEVars :: [String] -> Symbolic VarMap
+genEVars vars = do
+  smtEVars <- mapM exists vars
+  return $ M.fromList $ zip vars smtEVars
 
 smtOp Plus = (+)
 smtOp Minus = (-)
-toSmt :: (VarMap, UVarMap) -> Expr -> Symbolic SInteger
+toSmt :: (VarMap, VarMap, UVarMap) -> Expr -> Symbolic SInteger
 toSmt vs (LitInt i) = return $ literal (toInteger i)
-toSmt (vs, _) (Name v) = return $
-  fromMaybe (error "Inconsistent VarMap") (M.lookup v vs)
+toSmt (vs, evs, _) (Name v) = return $
+  fromMaybe (
+    fromMaybe (error $ "Inconsistent VarMap: " ++ show v) (M.lookup v evs)
+    ) (M.lookup v vs)
 toSmt vs (BinOp op e e') = do
   ve <- toSmt vs e
   ve' <- toSmt vs e'
   return $ smtOp op ve ve'
-toSmt v@(_, uvs) (ArrayAccess a e) = do
+toSmt v@(_, _, uvs) (ArrayAccess a e) = do
   v <- toSmt v e
   return $ u v
   where
@@ -101,7 +119,7 @@ toSmt _ _ = error "toSmt cannot handle logical expressions"
 
 smtOpB Eq = (.==)
 smtOpB Lt = (.<)
-toSmtB :: (VarMap, UVarMap) -> Expr -> Symbolic SBool
+toSmtB :: (VarMap, VarMap, UVarMap) -> Expr -> Symbolic SBool
 toSmtB vs (LitBool b) = return $ fromBool b
 toSmtB vs (BinOp op e e') =
   case op of
@@ -116,8 +134,8 @@ toSmtB vs (BinOp op e e') =
 toSmtB vs (Not e) = do
   v <- toSmtB vs e
   return $ bnot v
--- toSmtB vs (BinOp Imply p q) = toSmtB vs p ==> toSmtB vs q
-toSmtB vs (Forall _ e) = toSmtB vs e
+toSmtB vs (Forall v e) = toSmtB vs e
+toSmtB vs (Exist v e) = toSmtB vs e
 toSmtB _ e = error $ "toSmtB cannot handle arithmetic expressions: " ++ show e
 
 containsArray :: Expr -> Bool
@@ -125,28 +143,12 @@ containsArray ArrayAccess {} = True
 containsArray (BinOp _ e e') = containsArray e || containsArray e'
 containsArray (Not e) = containsArray e
 containsArray (Forall _ e) = containsArray e
+containsArray (Exist _ e) = containsArray e
 containsArray _ = False
-
-checkAssumptions :: (VarMap, UVarMap) -> [Expr] -> Symbolic (Maybe ResultMap)
-checkAssumptions vs@(vars, _) assumptions = do
-  -- Contraints
-  assumptions' <- mapM (toSmtB vs) assumptions
-  forM_ assumptions' constrain
-  -- Query
-  query $ do
-    cs <- checkSat
-    case cs of
-      Unk   -> error "Undecidable!"
-      Unsat -> return Nothing
-      Sat   -> do res <- forM (M.toList vars) (\(v, x) -> do
-                    xv <- getValue x
-                    return (v, xv))
-                  return $ Just $ M.fromList res
 
 assign :: ResultMap -> Expr -> Expr
 assign model = subst vs es
   where (vs, es) = unzip $ map (second $ LitInt . fromInteger) $ M.toList model
-
 
 check :: [Expr] -> Expr -> Symbolic String
 check assumptions goal = do
@@ -159,39 +161,48 @@ check assumptions goal = do
         unsafePerformIO $ runSMT $ do
           smtVars <- genVars vars
           smtUVars <- genUVars uVars
-          checkAssumptions (smtVars, smtUVars) assumptions
+          -- Contraints
+          assumptions' <- mapM (toSmtB (smtVars, M.empty, smtUVars)) assumptions
+          forM_ assumptions' constrain
+          -- Query
+          query $ do
+            cs <- checkSat
+            case cs of
+              Unk   -> error "Undecidable!"
+              Unsat -> return Nothing
+              Sat   -> do res <- forM (M.toList smtVars) (\(v, x) -> do
+                            xv <- getValue x
+                            return (v, xv))
+                          return $ Just $ M.fromList res
   case res of
     Nothing -> return "Ignore"
     Just model -> do
-      -- Model assignment
-      let goal' = assign model goal
+      -- Model assignment + Prenex conversion
+      let goal' = toPrenexFormFixpoint $ assign model goal
       let ass' = map (assign model) $ filter containsArray assumptions
       -- Re-normalize
       let (newAssumptions, newGoal) = normalize' goal'
       -- Query
       query $ do
         -- io $ do
-        --  putStrLn $ "Assumptions: " ++ show assumptions
-        --  putStrLn $ "Goal: " ++ show goal
         --  putStrLn $ "Model: " ++ show model
-        --  putStrLn $ "Assumptions2: " ++ show ass'
-        --  putStrLn $ "Goal2: " ++ show goal'
+        --  putStrLn $ "Assumptions: " ++ show ass'
+        --  putStrLn $ "Goal: " ++ show goal'
         --  putStrLn $ "NewAssumptions: " ++ show newAssumptions
         --  putStrLn $ "NewGoal: " ++ show newGoal
-        res <- io $ proveZ $ do
+        res <- io $ proveWith z3{verbose=False} $ do
           -- Generation
           gSmtVars <- genVars (getVars newGoal)
+          gSmtEVars <- genEVars (getEVars newGoal)
           gSmtUVars <- genUVars (getUVars newGoal)
-          let args = (gSmtVars, gSmtUVars)
+          let args = (gSmtVars, gSmtEVars, gSmtUVars)
           -- Assumptions
           let allAssumptions = ass' ++ newAssumptions
           allAssumptions' <- mapM (toSmtB args) allAssumptions
           forM_ allAssumptions' constrain
           -- Goal
           toSmtB args newGoal
+        -- io $ print res
         case show res of
           "Q.E.D." -> return "Pass"
           _ -> return "Fail"
-
-proveZ :: Provable a => a -> IO ThmResult
-proveZ = proveWith z3{verbose=False}

@@ -29,6 +29,19 @@ rename (VarStmt targets body) = do
   return $ VarStmt targets' (subst targets targets' body')
 rename _ = error "rename does not accept branching statements"
 
+renameE :: Expr -> State Int Expr
+renameE (Not e) = rename1 Not e
+renameE (BinOp op e1 e2) = do
+  e1' <- renameE e1
+  e2' <- renameE e2
+  return $ BinOp op e1' e2'
+renameE (Cond g et ef) = rename3 Cond g et ef
+renameE (Forall v e) = renameSubE Forall v e
+renameE (Exist v e) = renameSubE Exist v e
+renameE (ArrayAccess v e) = rename1 (ArrayAccess v) e
+renameE (RepBy arr i e) = rename3 RepBy arr i e
+renameE e = return e
+
 rename1 cons e = do
   e' <- renameE e
   return $ cons e'
@@ -37,27 +50,17 @@ rename3 cons e1 e2 e3 = do
   e2' <- renameE e2
   e3' <- renameE e3
   return $ cons e1' e2' e3'
-renameE :: Expr -> State Int Expr
-renameE (Not e) = rename1 Not e
-renameE (BinOp op e1 e2) = do
-  e1' <- renameE e1
-  e2' <- renameE e2
-  return $ BinOp op e1' e2'
-renameE (Cond g et ef) = rename3 Cond g et ef
-renameE f@(Forall v e) = do
+renameSubE cons v e = do
   counter <- get
   let n = length v
   if head (head v) == '$' then do
     e' <- renameE e
-    return $ Forall v e'
+    return $ cons v e'
   else do
     put (counter + n)
     let v' = ["$" ++ show c | c <- [counter..(counter + n - 1)]]
     e' <- renameE $ substE v v' e
-    return $ Forall v' e'
-renameE (ArrayAccess v e) = rename1 (ArrayAccess v) e
-renameE (RepBy arr i e) = rename3 RepBy arr i e
-renameE e = return e
+    return $ cons v' e'
 
 subst :: [String] -> [String] -> Stmt -> Stmt
 subst _ _ Skip = Skip
@@ -85,12 +88,15 @@ substE ts es (BinOp op e1 e2) =
   BinOp op (substE ts es e1) (substE ts es e2)
 substE ts es (Cond g et ef) =
   Cond (substE ts es g) (substE ts es et) (substE ts es ef)
-substE ts es (Forall vs e) =
-  Forall vs e'
-  where e' = substE ts' es' e
-        (ts', es') = unzip $ filter (\(t, _) -> notElem t vs) (zip ts es)
+substE ts es (Forall vs e) = substSubE ts es Forall vs e
+substE ts es (Exist vs e) = substSubE ts es Exist vs e
 substE ts es (ArrayAccess v e) =
   ArrayAccess v (substE ts es e)
 substE ts es (RepBy arr i e) =
   RepBy (substE ts es arr) (substE ts es i) (substE ts es e)
 substE _ _ q = q
+
+substSubE ts es cons vs e =
+  cons vs e'
+  where e' = substE ts' es' e
+        (ts', es') = unzip $ filter (\(t, _) -> t `notElem` vs) (zip ts es)

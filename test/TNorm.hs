@@ -10,6 +10,7 @@ normTests =
   [ normTest1
   , normTest2
   , normTest3
+  , normTest4
   ]
 
 normTest1 = normalize e @?= ([a], Just g)
@@ -34,3 +35,8 @@ normTest3 = normalize e @?= ([a1, a2, a3], Just g)
     g = a_k .= i 0 /\ a_l .= i 0 ==> Not _T .= _F \/ _F .!= _F
     [x, k, l] = map n ["x", "k", "l"]
     [a_k, a_l] = ["a".!k, "a".!l]
+
+normTest4 = toPrenexFormFixpoint e @?= e'
+  where
+    e = _T \/ Exist ["x"] _F ==> Forall ["y"] _T
+    e' = Forall ["y", "x"] $ _T \/ _F ==> _T

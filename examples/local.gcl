@@ -1,7 +1,7 @@
 { true }
 LOCAL(x|y)
   x := 5;
-  var (x) in
+  var x in
     x := 10;
     if (x = 5) then
       skip

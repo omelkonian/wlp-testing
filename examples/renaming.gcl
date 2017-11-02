@@ -2,16 +2,16 @@
 RENAMING(x|y)
   i := 19;
   assume i > 0;
-  var (i) in
+  var i in
     i := 10;
-    var (i) in
+    var i in
       i := 0;
       i++
     end;
     assume ~ (i < 0)
   end;
   assume i > 0;
-  var (i) in
+  var i in
     i := 10
   end
 { x - i = 1 }

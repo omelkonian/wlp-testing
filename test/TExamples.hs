@@ -44,9 +44,9 @@ minind =
     [i, _N, min, r, j] = map n ["i", "n", "min", "r", "j"]
 
 loopInvariant =
-  While (Just $ y .= i 0) (x .> i 0) (
+  While (Just $ x .>= i 0) (x .> i 0) (
     ["x"] .:= [x .- i 1]
   )
-  <:> Assert (markGoal $ y .= i 0 /\ x .<= i 0)
+  <:> Assert (markGoal $ x .= i 0)
   where
-    [x, y] = map n ["x", "y"]
+    x = n "x"

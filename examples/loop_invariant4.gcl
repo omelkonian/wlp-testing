@@ -1,6 +1,6 @@
 { x > 2 }
 LOOP_INV(x|y)
-  var (k,y) in
+  var k, y in
     y := 2;
     k := y;
     { x > 0 }

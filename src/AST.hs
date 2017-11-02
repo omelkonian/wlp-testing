@@ -25,6 +25,7 @@ data Expr = LitInt Int
           | BinOp Op Expr Expr
           | Cond Expr Expr Expr
           | Forall [String] Expr
+          | Exist [String] Expr
           | ArrayAccess String Expr
           | RepBy Expr Expr Expr
           deriving ( Eq
@@ -108,6 +109,8 @@ instance Show Expr where
   show (ArrayAccess arr e) = arr ++ "[" ++ show e ++ "]"
   show (Forall vs e) =
     "(forall " ++ show vs ++ " :: " ++ show e ++ ")"
+  show (Exist vs e) =
+    "(exist " ++ show vs ++ " :: " ++ show e ++ ")"
   show (Cond g et ef) =
     "(" ++ show g ++ " -> " ++ show et ++ " | " ++ show ef ++ ")"
   show (RepBy arr i e) =

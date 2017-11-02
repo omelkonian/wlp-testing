@@ -22,8 +22,8 @@ getPaths d (While inv g body) =
   | unrolls <- [1..(if even d then quot d 2 - 1 else quot d 2)]
   , paths <- getMultiPaths (d - unrolls - 1) (replicate unrolls body)
   , not $ null paths
-  , let continue = assume inv g
-  , let break = assume inv $ Not g
+  , let continue = Assume g
+  , let break = Assume $ Not g
   , let insertConds = foldr (\s -> (++) (continue : seqsToList s)) [break]
   ]
 getPaths d stmt = [stmt | d == 1]

@@ -1,5 +1,5 @@
 { i < n }
-MININD(a, i, n | r)
+PRENEX(a, i, n | r)
   var min in
     min, r := a[i], i;
     while i < n do
@@ -11,4 +11,6 @@ MININD(a, i, n | r)
       i++
     end
   end
-{ (forall j :: i <= j /\ j < n ==> a[r] <= a[j]) }
+{ (forall j :: i <= j /\ j < n ==>
+    (forall k :: i <= k /\ k < n ==>
+      a[r] <= a[j] /\ a[r] <= a[k])) }

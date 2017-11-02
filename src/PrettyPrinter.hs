@@ -52,6 +52,9 @@ instance PP Expr where
   pp (Forall vs e) _ = do
     putStr $ "(forall " ++ show vs
     putStr " :: " >> pp e 0 >> putStr ")"
+  pp (Exist vs e) _ = do
+    putStr $ "(exist " ++ show vs
+    putStr " :: " >> pp e 0 >> putStr ")"
   pp (Cond g et ef) _ = do
     putStr "(" >> pp g 0
     putStr " -> " >> pp et 0

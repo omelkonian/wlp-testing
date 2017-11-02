@@ -1,0 +1,6 @@
+{ x = 0 }
+EXIST(x | y)
+  while (x < 10) do
+    x++
+  end
+{ (exist i :: 0 < i /\ i <= 10 ==> i = x) }

@@ -1,6 +1,6 @@
 { x > 100 }
 E(x|y)
-  var (i) in
+  var i in
     i := 12;
     while (i > 0) do
       x--; i--
