@@ -14,94 +14,70 @@ import qualified Data.Map as M
 
 import AST hiding ((==>), (.<), (.>), name)
 import Wlp (subst)
-import Normalizer (normalize', toPrenexFormFixpoint)
+import Normalizer (toPrenexFormFixpoint)
 
+import Debug.Trace
+
+type Vars = ( [String] -- free variables
+            , [String] -- universally-quantified variables
+            , [String] -- existentially-quantified variables
+            , [String] -- uninterpreted variables
+            )
 type VarMap = M.Map String SInteger
 type UVarMap = M.Map String (SInteger -> SInteger)
 type ResultMap = M.Map String Integer
 
-getManyVars :: [Expr] -> [String]
-getManyVars e = nub $ concatMap getVars e
-getVars :: Expr -> [String]
-getVars e = nub $ getVars' e
-getVars' :: Expr -> [String]
-getVars' (Name v) = [v]
-getVars' (BinOp _ e e') = getVars' e ++ getVars' e'
+getManyVars :: [Expr] -> Vars
+getManyVars es =
+  let (vs, fvs, evs, uvs) = unzip4 $ map getVars es
+  in (nub $ concat vs, nub $ concat fvs, nub $ concat evs, nub $ concat uvs)
+getVars :: Expr -> Vars
+getVars e =
+  let (vs, fvs, evs, uvs) = getVars' e
+      freeVars = nub vs \\ (fvs ++ evs)
+  in (freeVars, nub fvs, nub evs, nub uvs)
+getVars' :: Expr -> Vars
+getVars' (Name v) = ([v], [], [], [])
+getVars' (BinOp _ e e') =
+  let (vs, fvs, evs, uvs) = getVars' e
+      (vs', fvs', evs', uvs') = getVars' e'
+  in (vs ++ vs', fvs ++ fvs', evs ++ evs', uvs ++ uvs')
 getVars' (Not e) = getVars' e
-getVars' (Cond g et ef) = getVars' g ++ getVars' et ++ getVars' ef
-getVars' (Forall vs e) = vs ++ getVars' e
-getVars' (Exist _ e) = getVars' e
-getVars' (ArrayAccess v e) = getVars' e
-getVars' _ = []
+getVars' (Cond g et ef) =
+  let (vs, fvs, evs, uvs) = getVars' g
+      (vs', fvs', evs', uvs') = getVars' et
+      (vs'', fvs'', evs'', uvs'') = getVars' ef
+  in (vs ++ vs' ++ vs'', fvs ++ fvs' ++ fvs'', evs ++ evs' ++ evs'', uvs ++ uvs' ++ uvs'')
+getVars' (Forall v e) =
+  let (vs, fvs, evs, uvs) = getVars' e
+  in (vs, v ++ fvs, evs, uvs)
+getVars' (Exist v e) =
+  let (vs, fvs, evs, uvs) = getVars' e
+  in (vs, fvs, v ++ evs, uvs)
+getVars' (ArrayAccess v e) =
+  let (vs, fvs, evs, uvs) = getVars' e
+  in (vs, fvs, evs, v : uvs)
+getVars' _ = ([], [], [], [])
 
-getManyUVars :: [Expr] -> [String]
-getManyUVars e = nub $ concatMap getUVars e
-getUVars :: Expr -> [String]
-getUVars e = nub $ getUVars' e
-getUVars' :: Expr -> [String]
-getUVars' (BinOp _ e e') = getUVars' e ++ getUVars' e'
-getUVars' (Not e) = getUVars' e
-getUVars' (Cond g et ef) = getUVars' g ++ getUVars' et ++ getUVars' ef
-getUVars' (Forall _ e) = getUVars' e
-getUVars' (Exist _ e) = getUVars' e
-getUVars' (ArrayAccess v e) = v : getUVars' e
-getUVars' _ = []
-
-getManyEVars :: [Expr] -> [String]
-getManyEVars e = nub $ concatMap getUVars e
-getEVars :: Expr -> [String]
-getEVars e = nub $ getUVars' e
-getEVars' :: Expr -> [String]
-getEVars' (BinOp _ e e') = getEVars' e ++ getEVars' e'
-getEVars' (Not e) = getEVars' e
-getEVars' (Cond g et ef) = getEVars' g ++ getEVars' et ++ getEVars' ef
-getEVars' (Forall _ e) = getEVars' e
-getEVars' (Exist vs e) = vs ++ getEVars' e
-getEVars' (ArrayAccess v e) = v : getEVars' e
-getEVars' _ = []
-
-getBoundVars :: Expr -> [String]
-getBoundVars e = nub $ getBoundVars' e
-
-getBoundVars' :: Expr -> [String]
-getBoundVars' (BinOp _ e e') = getBoundVars' e ++ getBoundVars' e'
-getBoundVars' (Not e) = getBoundVars' e
-getBoundVars' (Cond g et ef) = getBoundVars' g ++ getBoundVars' et ++ getBoundVars' ef
-getBoundVars' (Forall vs e) = vs ++ getBoundVars' e
-getBoundVars' (ArrayAccess v e) = getBoundVars' e
-getBoundVars' _ = []
-
-getFreeVars :: Expr -> [String]
-getFreeVars e = getVars e \\ getBoundVars e
-
-genVars :: [String] -> Symbolic VarMap
-genVars vars = do
-  smtVars <- sIntegers vars
-  return $ M.fromList $ zip vars smtVars
-
-genUVars :: [String] -> Symbolic UVarMap
-genUVars vars = do
-  let f = map uninterpret vars
-  return $ M.fromList $ zip vars f
-
-genEVars :: [String] -> Symbolic VarMap
-genEVars vars = do
-  smtEVars <- mapM exists vars
-  return $ M.fromList $ zip vars smtEVars
+genVars :: Vars -> Symbolic (VarMap, UVarMap)
+genVars (vs, fvs, evs, uvs) = do
+  vs' <- sIntegers $ vs ++ fvs
+  evs' <- mapM exists evs
+  let uvs' = map uninterpret uvs
+  return (M.fromList $ zip (vs ++ fvs ++ evs) (vs' ++ evs'),
+          M.fromList $ zip uvs uvs')
 
 smtOp Plus = (+)
 smtOp Minus = (-)
-toSmt :: (VarMap, VarMap, UVarMap) -> Expr -> Symbolic SInteger
+toSmt :: (VarMap, UVarMap) -> Expr -> Symbolic SInteger
 toSmt vs (LitInt i) = return $ literal (toInteger i)
-toSmt (vs, evs, _) (Name v) = return $
-  fromMaybe (
-    fromMaybe (error $ "Inconsistent VarMap: " ++ show v) (M.lookup v evs)
-    ) (M.lookup v vs)
+toSmt (vs, _) (Name v) = return $
+  fromMaybe (error $ "Inconsistent VarMap: " ++ show v ++ " not in " ++ show vs) (M.lookup v vs)
 toSmt vs (BinOp op e e') = do
   ve <- toSmt vs e
   ve' <- toSmt vs e'
   return $ smtOp op ve ve'
-toSmt v@(_, _, uvs) (ArrayAccess a e) = do
+toSmt v@(_, uvs) (ArrayAccess a e) = do
   v <- toSmt v e
   return $ u v
   where
@@ -119,7 +95,7 @@ toSmt _ _ = error "toSmt cannot handle logical expressions"
 
 smtOpB Eq = (.==)
 smtOpB Lt = (.<)
-toSmtB :: (VarMap, VarMap, UVarMap) -> Expr -> Symbolic SBool
+toSmtB :: (VarMap, UVarMap) -> Expr -> Symbolic SBool
 toSmtB vs (LitBool b) = return $ fromBool b
 toSmtB vs (BinOp op e e') =
   case op of
@@ -156,13 +132,11 @@ check assumptions goal = do
   setLogic UFNIA
   -- Generate vars
   let vars = getManyVars assumptions
-  let uVars = getManyUVars assumptions
   let res =
         unsafePerformIO $ runSMT $ do
-          smtVars <- genVars vars
-          smtUVars <- genUVars uVars
+          (smtVars, smtUVars) <- genVars vars
           -- Contraints
-          assumptions' <- mapM (toSmtB (smtVars, M.empty, smtUVars)) assumptions
+          assumptions' <- mapM (toSmtB (smtVars, smtUVars)) assumptions
           forM_ assumptions' constrain
           -- Query
           query $ do
@@ -180,28 +154,20 @@ check assumptions goal = do
       -- Model assignment + Prenex conversion
       let goal' = toPrenexFormFixpoint $ assign model goal
       let ass' = map (assign model) $ filter containsArray assumptions
-      -- Re-normalize
-      let (newAssumptions, newGoal) = normalize' goal'
-      -- Query
       query $ do
         -- io $ do
         --  putStrLn $ "Model: " ++ show model
         --  putStrLn $ "Assumptions: " ++ show ass'
         --  putStrLn $ "Goal: " ++ show goal'
-        --  putStrLn $ "NewAssumptions: " ++ show newAssumptions
-        --  putStrLn $ "NewGoal: " ++ show newGoal
         res <- io $ proveWith z3{verbose=False} $ do
           -- Generation
-          gSmtVars <- genVars (getVars newGoal)
-          gSmtEVars <- genEVars (getEVars newGoal)
-          gSmtUVars <- genUVars (getUVars newGoal)
-          let args = (gSmtVars, gSmtEVars, gSmtUVars)
-          -- Assumptions
-          let allAssumptions = ass' ++ newAssumptions
-          allAssumptions' <- mapM (toSmtB args) allAssumptions
+          vars <- genVars $ getVars goal'
+          -- Assumptions (needed for uninterpreted vars i.e. involving arrays)
+          let allAssumptions = ass'
+          allAssumptions' <- mapM (toSmtB vars) allAssumptions
           forM_ allAssumptions' constrain
           -- Goal
-          toSmtB args newGoal
+          toSmtB vars goal'
         -- io $ print res
         case show res of
           "Q.E.D." -> return "Pass"

@@ -23,6 +23,7 @@ inputTests =
   , local
   , renaming
   , inlineAssert
+  , exist
   , loop1
   , loop2
   , loopFail
@@ -37,6 +38,7 @@ inputTests =
   , unfoldFail
   , example
   , minind
+  , minindAlt
   , maxind
   , minindFail
   , minindFail2
@@ -64,10 +66,12 @@ runInput n inputFile =
 pass n input = "Pass" `elem` runInput n input @?= True
 fail n input = "Fail" `elem` runInput n input @?= True
 
+
 arith = pass 1 "examples/arith.gcl"
 local = pass 2 "examples/local.gcl"
 renaming = pass 1 "examples/renaming.gcl"
 inlineAssert = pass 2 "examples/assert.gcl"
+exist = pass 15 "examples/exist.gcl"
 loop1 = pass 5 "examples/loop1.gcl"
 loop2 = pass 5 "examples/loop2.gcl"
 loopFail = fail 3 "examples/loop_fail.gcl"
@@ -82,6 +86,7 @@ unfold = pass 13 "examples/unfold.gcl"
 unfoldFail = fail 13 "examples/unfold_fail.gcl"
 example = fail 5 "examples/example.gcl"
 minind = pass 10 "examples/minind.gcl"
+minindAlt = pass 10 "examples/minind_alt.gcl"
 maxind = pass 10 "examples/maxind.gcl"
 minindFail = fail 10 "examples/minind_fail.gcl"
 minindFail2 = fail 10 "examples/minind_fail2.gcl"
