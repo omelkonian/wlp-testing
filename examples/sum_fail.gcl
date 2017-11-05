@@ -1,0 +1,9 @@
+{ true }
+SUM(a, n | r)
+  for i in 1..2 do
+    a[i] := 1
+  end;
+  for i in 1..2 do
+    a[i] := a[i] + 9
+  end
+{ (forall i :: i in [1..3] ==> a[i] = 10) }

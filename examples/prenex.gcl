@@ -11,6 +11,6 @@ PRENEX(a, i, n | r)
       i++
     end
   end
-{ (forall j :: i <= j /\ j < n ==>
-    (forall k :: i <= k /\ k < n ==>
+{ (forall j :: j in [i..n) ==>
+    (forall k :: k in [i..n) ==>
       a[r] <= a[j] /\ a[r] <= a[k])) }

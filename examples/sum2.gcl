@@ -1,0 +1,6 @@
+{ true }
+SUM(a, n | r)
+  for i in 1..5 do
+    a[i] := i + (10 - i)
+  end
+{ (forall i :: i in [1..5] ==> a[i] = 10) }

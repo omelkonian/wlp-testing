@@ -54,6 +54,7 @@ stmtP :: Parser Stmt
 stmtP = buildExpressionParser table term
   where table = [ [infix_ ";" (<:>)] ]
         term = try (varStmtP <?> "var") <|>
+               try (forP <?> "for") <|>
                try (whileP <?> "while") <|>
                try (iteP <?> "ite") <|>
                try (asgP <?> "asg") <|>
@@ -128,6 +129,16 @@ whileP = do
     i@(Just inv) -> Assert inv <:> While i expr (stmt <:> Assert inv)
     _ -> While Nothing expr stmt
 
+forP :: Parser Stmt
+forP = do
+  x <- "for" ~> nameP
+  low <- "in" ~> exprP
+  high <- ".." ~> exprP
+  stmt <- "do" ~> stmtP <~ "end"
+  return $ VarStmt [x] $
+    [x] .:= [low]
+    <:> While Nothing (n x .< high .+ i 1) (stmt <:> [x] .:= [n x .+ i 1])
+
 varStmtP :: Parser Stmt
 varStmtP = do
   vars <- "var" ~> commas nameP
@@ -151,6 +162,10 @@ exprP =
                 , [ infix_ "==>" (==>) ]
                 ]
         term = try (parens exprP) <|>
+               try rangeInInP <|>
+               try rangeInExP <|>
+               try rangeExInP <|>
+               try rangeExExP <|>
                try arrayAccessP <|>
                try forallP <|>
                primitiveP <?> "term"
@@ -168,6 +183,34 @@ condP = do
   et <- "->" ~> exprP
   ef <- "|" ~> exprP
   return $ Cond g et ef
+
+rangeInInP :: Parser Expr
+rangeInInP = do
+  mid <- nameP <~ "in"
+  low <- "[" ~> exprP
+  high <- ".." ~> exprP <~ "]"
+  return $ low .<= n mid /\ n mid .<= high
+
+rangeExExP :: Parser Expr
+rangeExExP = do
+  mid <- nameP <~ "in"
+  low <- "(" ~> exprP
+  high <- ".." ~> exprP <~ ")"
+  return $ low .< n mid /\ n mid .< high
+
+rangeInExP :: Parser Expr
+rangeInExP = do
+  mid <- nameP <~ "in"
+  low <- "[" ~> exprP
+  high <- ".." ~> exprP <~ ")"
+  return $ low .<= n mid /\ n mid .< high
+
+rangeExInP :: Parser Expr
+rangeExInP = do
+  mid <- nameP <~ "in"
+  low <- "(" ~> exprP
+  high <- ".." ~> exprP <~ "]"
+  return $ low .< n mid /\  n mid .<= high
 
 forallP :: Parser Expr
 forallP = "(" ~> (forall <|> exists) <~ ")"

@@ -153,19 +153,19 @@ check assumptions goal = do
     Just model -> do
       -- Model assignment + Prenex conversion
       let goal' = toPrenexFormFixpoint $ assign model goal
-      let ass' = map (assign model) $ filter containsArray assumptions
+      let assumptions' = map (assign model) $ filter containsArray assumptions
+      let vars = getManyVars (goal' : assumptions')
       query $ do
         -- io $ do
         --  putStrLn $ "Model: " ++ show model
-        --  putStrLn $ "Assumptions: " ++ show ass'
+        --  putStrLn $ "Assumptions: " ++ show assumptions'
         --  putStrLn $ "Goal: " ++ show goal'
         res <- io $ proveWith z3{verbose=False} $ do
           -- Generation
-          vars <- genVars $ getVars goal'
+          vars <- genVars $ getManyVars (goal' : assumptions')
           -- Assumptions (needed for uninterpreted vars i.e. involving arrays)
-          let allAssumptions = ass'
-          allAssumptions' <- mapM (toSmtB vars) allAssumptions
-          forM_ allAssumptions' constrain
+          ass' <- mapM (toSmtB vars) assumptions'
+          forM_ ass' constrain
           -- Goal
           toSmtB vars goal'
         -- io $ print res

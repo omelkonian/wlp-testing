@@ -11,4 +11,4 @@ MININD(a, i, n | r)
       i++
     end
   end
-{ ~(exist j :: ~ (i <= j /\ j < n ==> a[r] <= a[j])) }
+{ ~(exist j :: ~(j in [i..n) ==> a[r] <= a[j])) }

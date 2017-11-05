@@ -11,4 +11,4 @@ MININD_FAIL(a, i, n | r)
       i++
     end
   end
-{ (forall j :: s <= j /\ j < n + 1 ==> a[r] <= a[j]) }
+{ (forall j :: j in [s..n] ==> a[r] <= a[j]) }

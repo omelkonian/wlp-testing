@@ -7,7 +7,7 @@ import Data.SBV.Control (io)
 import Data.Maybe (fromMaybe)
 import Text.Parsec (parse)
 import Data.SBV (runSMT)
-import Prelude hiding (fail)
+import Prelude hiding (fail, sum)
 
 import AST
 import Parser (programP)
@@ -16,7 +16,6 @@ import Renaming (rename)
 import Wlp (wlp)
 import Normalizer (normalize)
 import SAT (check)
-
 
 inputTests =
   [ arith
@@ -44,6 +43,9 @@ inputTests =
   , minindFail2
   , swap
   , swapFail
+  , sum
+  , sum2
+  , sumFail
   ]
 
 runInput :: Int -> String -> [String]
@@ -66,7 +68,6 @@ runInput n inputFile =
 pass n input = "Pass" `elem` runInput n input @?= True
 fail n input = "Fail" `elem` runInput n input @?= True
 
-
 arith = pass 1 "examples/arith.gcl"
 local = pass 2 "examples/local.gcl"
 renaming = pass 1 "examples/renaming.gcl"
@@ -82,8 +83,8 @@ loopInvariant4 = pass 4 "examples/loop_invariant4.gcl"
 loopInvariantForall = pass 4 "examples/loop_invariant_forall.gcl"
 loopInvariantForallFail = fail 4 "examples/loop_invariant_forall_fail.gcl"
 prenex = pass 20 "examples/prenex.gcl"
-unfold = pass 13 "examples/unfold.gcl"
-unfoldFail = fail 13 "examples/unfold_fail.gcl"
+unfold = pass 8 "examples/unfold.gcl"
+unfoldFail = fail 8 "examples/unfold_fail.gcl"
 example = fail 5 "examples/example.gcl"
 minind = pass 10 "examples/minind.gcl"
 minindAlt = pass 10 "examples/minind_alt.gcl"
@@ -92,3 +93,6 @@ minindFail = fail 10 "examples/minind_fail.gcl"
 minindFail2 = fail 10 "examples/minind_fail2.gcl"
 swap = pass 1 "examples/swap.gcl"
 swapFail = fail 1 "examples/swap_fail.gcl"
+sum = pass 30 "examples/sum.gcl"
+sum2 = pass 10 "examples/sum2.gcl"
+sumFail = fail 15 "examples/sum_fail.gcl"
