@@ -36,7 +36,7 @@ normTest3 = normalize e @?= ([a1, a2, a3], Just g)
     [x, k, l] = map n ["x", "k", "l"]
     [a_k, a_l] = ["a".!k, "a".!l]
 
-normTest4 = toPrenexFormFixpoint e @?= e'
+normTest4 = prenexFixpoint e @?= e'
   where
     e = _T \/ Exist ["x"] _F ==> Forall ["y"] _T
     e' = Forall ["y", "x"] $ _T \/ _F ==> _T

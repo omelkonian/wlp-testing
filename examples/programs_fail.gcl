@@ -1,0 +1,11 @@
+{ true }
+INC(x|y)
+  y := x + 1
+{ y = x + 1 }
+
+{ i = 5 }
+PROG(i|)
+  for k in 1..2 do
+    i := INC(i)
+  end
+{ i = 6 }

@@ -1,9 +1,6 @@
-{ true }
+{ (forall i :: i in [low..high) ==> a[i] = 1) }
 SUM(a, n | r)
-  for i in 1..2 do
-    a[i] := 1
-  end;
-  for i in 1..2 do
+  for i in low..high do
     a[i] := a[i] + 9
   end
-{ (forall i :: i in [1..3] ==> a[i] = 10) }
+{ (forall i :: i in [low..high] ==> a[i] = 10) }

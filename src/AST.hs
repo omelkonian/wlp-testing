@@ -5,6 +5,8 @@ data Program = Prog { name :: String
                     , inputs :: [String]
                     , outputs :: [String]
                     , body :: Stmt
+                    , pre :: Expr
+                    , post :: Expr
                     }
 
 -- | Representation of a GCL statement.
@@ -29,21 +31,22 @@ data Expr = LitInt Int
           | Exist [String] Expr
           | ArrayAccess String Expr
           | RepBy Expr Expr Expr
+          | ProgCall String [Expr]
           deriving Eq
 
 -- | Representation of a GCL operator.
-data Op = Plus | Minus | Imply | Lt | Eq deriving Eq
+data Op = Plus | Minus | Imply | And | Lt | Eq deriving Eq
 
 -- | Markers used by Normalizer.
 markAssumption = Forall ["$assumption"]
 markGoal = Forall ["$goal"]
 
 -- | Integrate (pre/post)-condition into the body of the program.
-hoarify :: Program -> Expr -> Expr -> Program
-hoarify prog pre post =
-  prog { body = Assume pre
+hoarify :: Program -> Program
+hoarify prog =
+  prog { body = Assume (pre prog)
             <:> body prog
-            <:> Assert (markGoal post)
+            <:> Assert (markGoal $ post prog)
        }
 
 -- Utility DSL.
@@ -56,7 +59,7 @@ e ==> e' = BinOp Imply e e'
 infixl 5 \/
 e \/ e' = (e ==> e') ==> e'
 infixl 4 /\
-e /\ e' = if e' == _T then e else Not $ e ==> Not e'
+e /\ e' = if e' == _T then e else BinOp And e e' -- Not $ e ==> Not e'
 infix 6 .!=
 e .!= e' = Not $ e .= e'
 infix 6 .=
@@ -115,6 +118,8 @@ instance Show Expr where
     "(" ++ show g ++ " -> " ++ show et ++ " | " ++ show ef ++ ")"
   show (RepBy arr i e) =
     "[" ++ show arr ++ " | " ++ show i ++ " -> " ++ show e ++ "]"
+  show (ProgCall p es) =
+    p ++ "(" ++ show es ++ ")"
 
 instance Show Op where
   show op = case op of
@@ -123,3 +128,4 @@ instance Show Op where
     Lt -> "<"
     Eq -> "="
     Imply -> "==>"
+    And -> "/\\"

@@ -1,0 +1,4 @@
+{ (forall j :: j in [0..2] ==> a[j] = 0) }
+ARRAY(a|a2)
+  a2 := a
+{ (forall j :: j in [0..2] ==> a2[j] = 0) }

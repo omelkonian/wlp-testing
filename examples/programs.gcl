@@ -1,0 +1,9 @@
+{ x > 0 }
+PROG(x|y)
+  y := 0-x
+{ y < 0 }
+
+{ x > 0 }
+PROGG(x|y)
+  y := PROG(x)
+{ y < 0 }

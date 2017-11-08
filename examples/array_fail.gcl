@@ -1,0 +1,4 @@
+{ a[0] = 0 /\ a[1] = 0 }
+ARRAY2(a|)
+  skip
+{ (forall j :: j in [0..2] ==> a[j] = 0) }

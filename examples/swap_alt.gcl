@@ -1,0 +1,8 @@
+{ x = a[i] /\ y = a[j] }
+SWAP(a, i, j | r)
+  var b in
+    b := a[i];
+    a[i] := a[j];
+    a[j] := b
+  end
+{ x = a[j] /\ y = a[i] }

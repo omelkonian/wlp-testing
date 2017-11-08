@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 
-module Parser (programP) where
+module Parser (programP, manyProgramP) where
 
 import Control.Monad
 import Text.Parsec
@@ -15,10 +15,9 @@ import AST
 import Debug.Trace
 
 -- | Useful marcros.
-test p = parse (p <* eof) ""
 lexeme p = spaces *> p <* spaces
 str = lexeme . string
-commas l = l `sepBy1` string ", "
+commas l = l `sepBy` string ", "
 (<~) p s = p <* lexeme (string s)
 (~>) s p = lexeme (string s) *> p
 parens = Tokens.parens haskell
@@ -28,21 +27,19 @@ infix_ op f = Infix (reserved op >> return f) AssocLeft
 prefix op f = Prefix (reserved op >> return f)
 postfix op f = Postfix (reserved op >> return f)
 
--- | Program.
+-- | Programs.
+manyProgramP :: Parser [Program]
+manyProgramP = many1 programP <* eof
+
 programP :: Parser Program
 programP = do
   pre <- "{" ~> exprP <~ "}"
-  prog <- programBodyP
-  post <- ("{" ~> exprP <~ "}") <* eof
-  return $ hoarify prog pre post
-
-programBodyP :: Parser Program
-programBodyP = do
-  name <- programNameP <~ "("
+  name <- nameP <~ "("
   inputs <- commas nameP <~ "|"
   outputs <- commas nameP <~ ")"
   stmt <- stmtP
-  return $ Prog name inputs outputs stmt
+  post <- "{" ~> exprP <~ "}"
+  return $ hoarify $ Prog name inputs outputs stmt pre post
 
 -- | Statements.
 stmtP :: Parser Stmt
@@ -145,6 +142,7 @@ exprP :: Parser Expr
 exprP =
   try condP <|>
   try repbyP <|>
+  try progCallP <|>
   buildExpressionParser table term <?> "expression"
   where table = [ [ infix_ "+" (.+), infix_ "-" (.-) ]
                 , [ infix_ "=" (.=), infix_ "!=" (\e e' -> Not $ e .= e')
@@ -164,6 +162,12 @@ exprP =
                try arrayAccessP <|>
                try forallP <|>
                primitiveP <?> "term"
+
+progCallP :: Parser Expr
+progCallP = do
+  prog <- nameP <~ "("
+  inputs <- commas exprP <~ ")"
+  return $ ProgCall prog inputs
 
 repbyP :: Parser Expr
 repbyP = do
@@ -230,11 +234,11 @@ primitiveP = lexeme $
   (LitBool <$> boolP) <|>
   (Name <$> nameP)
 
-programNameP :: Parser String
-programNameP = many1 $ upper <|> char '_'
-
 nameP :: Parser String
-nameP = many1 $ lower <|> char '_'
+nameP = do
+  base <- many1 $ letter <|> oneOf ['_', '$']
+  suffix <- many digit
+  return $ base ++ suffix
 
 numberP :: Parser Int
 numberP = do

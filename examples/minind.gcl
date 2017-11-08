@@ -1,14 +1,15 @@
-{ i < n }
-MININD(a, i, n | r)
-  var min in
-    min, r := a[i], i;
-    while i < n do
-      if a[i] < min then
-        min, r := a[i], i
+{ i < N }
+MININD(a, i, N | r)
+  var min, i0 in
+    i0 := i;
+    min, r := a[i0], i0;
+    while i0 < N do
+      if a[i0] < min then
+        min, r := a[i0], i0
       else
         skip
       fi;
-      i++
+      i0++
     end
   end
-{ (forall j :: j in [i..n) ==> a[r] <= a[j]) }
+{ r in [i..N) /\ (forall j :: j in [i..N) ==> a[r] <= a[j]) }

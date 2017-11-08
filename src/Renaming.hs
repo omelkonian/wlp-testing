@@ -1,9 +1,13 @@
-module Renaming where
+module Renaming (rename, prefix) where
 
 import Control.Monad.State
 import Data.List (elemIndex, findIndex)
+import Data.Maybe (fromMaybe)
 
 import AST
+
+-- | Prefix of internally-generated variables.
+prefix = '$'
 
 -- | Rename local variables in `Var` statements with fresh names.
 rename :: Stmt -> State Int Stmt
@@ -26,7 +30,7 @@ rename (VarStmt targets body) = do
   counter <- get
   let len = length targets
   put (counter + len)
-  let targets' = ["$" ++ show i | i <- [counter..(counter + len - 1)]]
+  let targets' = [prefix : show i | i <- [counter..(counter + len - 1)]]
   return $ VarStmt targets' (subst targets targets' body')
 rename _ = error "rename does not accept branching statements"
 
@@ -52,15 +56,16 @@ rename3 cons e1 e2 e3 = do
   e2' <- renameE e2
   e3' <- renameE e3
   return $ cons e1' e2' e3'
+
 renameSubE cons v e = do
   counter <- get
   let n = length v
-  if head (head v) == '$' then do
+  if head (head v) == prefix then do
     e' <- renameE e
     return $ cons v e'
   else do
     put (counter + n)
-    let v' = ["$" ++ show c | c <- [counter..(counter + n - 1)]]
+    let v' = [prefix : show c | c <- [counter..(counter + n - 1)]]
     e' <- renameE $ substE v v' e
     return $ cons v' e'
 
@@ -95,7 +100,12 @@ substE ts es (Cond g et ef) =
 substE ts es (Forall vs e) = substSubE ts es Forall vs e
 substE ts es (Exist vs e) = substSubE ts es Exist vs e
 substE ts es (ArrayAccess v e) =
-  ArrayAccess v (substE ts es e)
+  ArrayAccess v' e'
+  where
+    e' = substE ts es e
+    v' = case elemIndex v ts of
+           Just i -> es !! i
+           Nothing -> v
 substE ts es (RepBy arr i e) =
   RepBy (substE ts es arr) (substE ts es i) (substE ts es e)
 substE _ _ q = q

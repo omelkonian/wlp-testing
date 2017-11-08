@@ -1,14 +1,15 @@
-{ i < n }
-MAXIND(a, i, n | r)
+{ i < N }
+MAXIND(a, i, N | a2)
   var max in
     s, max, r := i, a[i], i;
-    while i < n do
+    while i < N do
       if a[i] > max then
         max, r := a[i], i
       else
         skip
       fi;
       i++
-    end
+    end;
+    a2 := a
   end
-{ (forall j :: j in [s..n) ==> a[r] >= a[j]) }
+{ (forall j :: j in [s..N) ==> a2[r] >= a2[j]) }

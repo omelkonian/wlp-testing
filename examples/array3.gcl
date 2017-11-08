@@ -1,0 +1,8 @@
+{ (forall j :: j in [1..N] ==> a[j] = 0) }
+ARRAY(a|)
+  for i in 1..N do
+    for j in (i+1)..N do
+      a[i] := a[i] + 1
+    end
+  end
+{ (forall i :: i in [1..N] ==> a[i] = N - i) }

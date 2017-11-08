@@ -1,9 +1,6 @@
 { x = a[i] /\ y = a[j] /\ i != j /\ a[i] != a[j] }
 SWAP(a, i, j | r)
-  var b in
-    b := a[i];
-    a[i] := a[j];
-    a[j] := b;
-    r := a
-  end
-{ x = r[i] /\ y = r[j] }
+  r := a;
+  r[i] := a[i];
+  r[j] := a[j]
+{ x = r[j] /\ y = r[i] }

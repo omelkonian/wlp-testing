@@ -1,4 +1,4 @@
-module Normalizer where
+module Normalizer (normalize, prenexFixpoint, stripMarks) where
 
 import Control.Applicative ((<|>))
 import Data.List
@@ -15,30 +15,46 @@ normalize (BinOp Imply (Forall ["$assumption"] p) e) =
 normalize _ = ([], Nothing)
 
 -- | Convert a logical expression to Prenex Normal form.
-toPrenexFormFixpoint :: Expr -> Expr
-toPrenexFormFixpoint e =
-  if e' == e then groupQuantifiers e' else toPrenexFormFixpoint e'
-  where e' = toPrenexForm e
-toPrenexForm :: Expr -> Expr
-toPrenexForm (Not (Forall vs e)) =
+prenexFixpoint :: Expr -> Expr
+prenexFixpoint e =
+  if e' == e then groupQuantifiers e' else prenexFixpoint e'
+  where e' = prenex e
+prenex :: Expr -> Expr
+prenex (Not (Forall vs e)) =
   Exist vs $ Not e
-toPrenexForm (Not (Exist vs e)) =
+prenex (Not (Exist vs e)) =
   Forall vs $ Not e
-toPrenexForm (BinOp Imply (Forall vs p) q) =
-  Exist vs $ toPrenexForm p ==> toPrenexForm q
-toPrenexForm (BinOp Imply (Exist vs p) q) =
-  Forall vs $ toPrenexForm p ==> toPrenexForm q
-toPrenexForm (BinOp Imply p (Forall vs q)) =
-  Forall vs $ toPrenexForm p ==> toPrenexForm q
-toPrenexForm (BinOp Imply p (Exist vs q)) =
-  Exist vs $ toPrenexForm p ==> toPrenexForm q
-toPrenexForm (BinOp op p q) =
-  BinOp op (toPrenexForm p) (toPrenexForm q)
-toPrenexForm (Forall vs e) =
-  Forall vs $ toPrenexForm e
-toPrenexForm (Exist vs e) =
-  Exist vs $ toPrenexForm e
-toPrenexForm e = e
+prenex (BinOp Imply (Forall vs p) q) =
+  Exist vs $ prenex p ==> prenex q
+prenex (BinOp Imply (Exist vs p) q) =
+  Forall vs $ prenex p ==> prenex q
+prenex (BinOp Imply p (Forall vs q)) =
+  Forall vs $ prenex p ==> prenex q
+prenex (BinOp Imply p (Exist vs q)) =
+  Exist vs $ prenex p ==> prenex q
+prenex (BinOp And (Forall vs e) (Forall vs' e')) =
+  Forall (vs ++ vs') $ prenex e /\ prenex e'
+prenex (BinOp And (Forall vs e) (Exist vs' e')) =
+  Forall vs $ Exist vs' $ prenex e /\ prenex e'
+prenex (BinOp And (Exist vs e) (Exist vs' e')) =
+  Exist (vs ++ vs') $ prenex e /\ prenex e'
+prenex (BinOp And (Exist vs e) (Forall vs' e')) =
+  Forall vs' $ Exist vs $ prenex e /\ prenex e'
+prenex (BinOp And (Forall vs e) e') =
+  Forall vs $ prenex e /\ prenex e'
+prenex (BinOp And e (Forall vs e')) =
+  Forall vs $ prenex e /\ prenex e'
+prenex (BinOp And (Exist vs e) e') =
+  Exist vs $ prenex e /\ prenex e'
+prenex (BinOp And e (Exist vs e')) =
+  Exist vs $ prenex e /\ prenex e'
+prenex (BinOp op p q) =
+  BinOp op (prenex p) (prenex q)
+prenex (Forall vs e) =
+  Forall vs $ prenex e
+prenex (Exist vs e) =
+  Exist vs $ prenex e
+prenex e = e
 
 -- | Group all quantifiers of an expression in Prenex Normal form to a single
 -- universal quantifier and a single existential quantifier.

@@ -1,4 +1,4 @@
-module Paths where
+module Paths (getAllPaths) where
 
 import AST
 

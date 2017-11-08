@@ -1,0 +1,4 @@
+{ (forall j :: j = 2 ==> j < x) }
+ASSUME(x|)
+  skip
+{ x > 2 }

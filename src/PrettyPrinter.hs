@@ -17,7 +17,7 @@ instance PP Program where
     put 0 ["\t", name prog, ": (",
            commas (inputs prog), " | ", commas (outputs prog), ")"] >> ln
     putStrLn "==============================="
-    pp (body prog) 1 >> ln >> ln
+    -- pp (body prog) 1 >> ln >> ln
 
 instance PP Stmt where
   pp stmt indent =

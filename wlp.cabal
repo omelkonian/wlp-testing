@@ -1,4 +1,4 @@
-name:                wlp-test
+name:                wlp
 version:             0.1.0.0
 -- synopsis:
 -- description:
@@ -19,6 +19,7 @@ library
                      , Normalizer
                      , Renaming
                      , SAT
+                     , ProgramCalls
   build-depends:       base >= 4.7 && < 5
                      , parsec >= 3.1
                      , mtl
@@ -28,7 +29,7 @@ library
                      , ansi-terminal
   default-language:    Haskell2010
 
-executable wlp-test-exe
+executable wlp
   hs-source-dirs:      app
   main-is:             Main.hs
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
@@ -38,7 +39,7 @@ executable wlp-test-exe
                      , sbv
                      , containers
                      , optparse-applicative
-                     , wlp-test
+                     , wlp
                      , ansi-terminal
   default-language:    Haskell2010
 
@@ -56,7 +57,7 @@ test-suite quickcheck-test-framework-test
                      , TFull
                      , TInputs
   build-depends:       base
-                     , wlp-test
+                     , wlp
                      , test-framework
                      , test-framework-hunit
                      , HUnit

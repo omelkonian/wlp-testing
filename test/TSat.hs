@@ -23,7 +23,7 @@ satTests =
   , satTest12
   ]
 
-testSat ass g = unsafePerformIO $ runSMT $ check ass g
+testSat ass g = unsafePerformIO $ runSMT $ check False ass g
 
 satTest1 = testSat ass g @?= "Fail"
   where

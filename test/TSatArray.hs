@@ -24,11 +24,9 @@ satArrayTests =
   , satTest13
   , satTest14
   , satTest15
-  , satTest16
-  , satTest17
   ]
 
-testSat ass g = unsafePerformIO $ runSMT $ check ass g
+testSat ass g = unsafePerformIO $ runSMT $ check False ass g
 
 satTest1 = testSat ass g @?= "Ignore"
   where
@@ -123,25 +121,12 @@ satTest13 = testSat ass g @?= "Fail"
     j = n "j"
     [a_0, a_j] = ["a" .! i 0, "a" .! j]
 
-satTest14 = testSat ass g @?= "Pass"
-  where
-    ass = [a_0 .= i 0, a_1 .= i 0]
-    g = Forall ["j"] $ j .= i 0 \/ j .= i 1 ==> a_j .= i 0
-    j = n "j"
-    [a_0, a_1, a_j] = ["a" .! i 0, "a" .! i 1, "a" .! j]
-
-satTest15 = testSat [] g @?= "Fail"
+satTest14 = testSat [] g @?= "Fail"
   where
     g = Forall ["x"] $ x .= i 1 ==> a_x .= a_0
     [x, a_x, a_0] = [n "x", "a" .! x, "a" .! i 0]
 
-satTest16 = testSat ass g @?= "Pass"
-  where
-    ass = [a_0 .= i 1, a_1 .= i 1]
-    g = Forall ["x"] $ x .= i 0 \/ x .= i 1 ==> a_x .=  i 1
-    [x, a_x, a_0, a_1] = [n "x", "a" .! x, "a" .! i 0, "a" .! i 1]
-
-satTest17 = testSat ass g @?= "Fail"
+satTest15 = testSat ass g @?= "Fail"
   where
     ass = [a_0 .= i 1, a_1 .= i 1]
     g = Forall ["x"] $ x .= i 0 \/ x .= i 2 ==> a_x .=  i 1

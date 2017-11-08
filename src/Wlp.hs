@@ -1,4 +1,4 @@
-module Wlp where
+module Wlp (wlp, subst) where
 
 import Data.List (elemIndex, nub)
 import qualified Data.Map as M

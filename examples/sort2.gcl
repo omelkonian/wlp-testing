@@ -1,0 +1,35 @@
+{ true }
+SWAP(a, i, j | r)
+  r := a;
+  r[i] := a[j];
+  r[j] := a[i]
+{ a[i] = r[j] /\ a[j] = r[i] /\ (forall k :: k != i /\ k != j ==> a[k] = r[k]) }
+
+{ i < N }
+MININD(a, i, N | r)
+  var min, i0 in
+    i0 := i;
+    min, r := a[i0], i0;
+    while i0 < N do
+      if a[i0] < min then
+        min, r := a[i0], i0
+      else
+        skip
+      fi;
+      i0++
+    end
+  end
+{ r in [i..N) /\ (forall j :: j in [i..N) ==> a[r] <= a[j]) }
+
+
+{ N > 0 }
+SORT(a, N | r)
+  for i in 0..(N-2) do
+    m := MININD(a, i+1, N);
+    if a[m] < a[i] then
+      a := SWAP(a, i, m)
+    else
+      skip
+    fi
+  end
+{ (forall j :: j in [0..N-1) ==> a[j] <= a[j + 1]) }
