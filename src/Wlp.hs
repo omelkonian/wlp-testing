@@ -4,9 +4,8 @@ import Data.List (elemIndex, nub)
 import qualified Data.Map as M
 
 import AST
-import Debug.Trace
 
-
+-- | Calculate the weakest (liberal) pre-condition of a given statement.
 wlp :: Stmt -> Expr -> Expr
 wlp Skip q = q
 wlp s@(Assert a) q =
@@ -24,6 +23,7 @@ wlp (Asg targets exprs) q = subst targets exprs q
 wlp (VarStmt targets body) q = wlp body q
 wlp _ _ = error "wlp expects non-branching statements"
 
+-- | Substitute variables with given expressions.
 subst :: [String] -> [Expr] -> Expr -> Expr
 subst ts es (Name x) =
   case x `elemIndex` ts of

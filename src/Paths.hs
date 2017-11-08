@@ -2,11 +2,12 @@ module Paths where
 
 import AST
 
-
+-- | Get all possible paths of a given statement.
 getAllPaths :: Int -> Int -> Stmt -> [Stmt]
 getAllPaths depthStart depthEnd prog =
   concat [getPaths d prog | d <- [depthStart..depthEnd]]
 
+-- | Get all possible paths of a given statement with a certain depth.
 getPaths :: Int -> Stmt -> [Stmt]
 getPaths d (VarStmt ids s) =
   [VarStmt ids s' | s' <- getPaths (d - 1) s]
@@ -28,6 +29,8 @@ getPaths d (While inv g body) =
   ]
 getPaths d stmt = [stmt | d == 1]
 
+-- | Get all possible path combinations of the given statements with a certain
+-- total depth.
 getMultiPaths :: Int -> [Stmt] -> [[Stmt]]
 getMultiPaths d stmts =
   map (map fst) (getMultiPaths' d stmts)
@@ -40,9 +43,10 @@ getMultiPaths' depth (stmt : stmts) =
   , sum (d : map snd rest) == depth
   ]
 
-assume Nothing q = Assume q
-assume (Just p) q = Assume $ p /\ q
-
+-- | Convert sequenced statements into a list of statements.
 seqsToList :: Stmt -> [Stmt]
 seqsToList (Seq s s') = seqsToList s ++ seqsToList s'
 seqsToList s = [s]
+
+assume Nothing q = Assume q
+assume (Just p) q = Assume $ p /\ q

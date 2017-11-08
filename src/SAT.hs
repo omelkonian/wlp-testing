@@ -1,4 +1,3 @@
-{-# LANGUAGE FlexibleContexts #-}
 module SAT where
 
 import System.Console.ANSI
@@ -16,8 +15,7 @@ import AST hiding ((==>), (.<), (.>), name)
 import Wlp (subst)
 import Normalizer (toPrenexFormFixpoint)
 
-import Debug.Trace
-
+-- | Type aliases.
 type Vars = ( [String] -- free variables
             , [String] -- universally-quantified variables
             , [String] -- existentially-quantified variables
@@ -27,6 +25,7 @@ type VarMap = M.Map String SInteger
 type UVarMap = M.Map String (SInteger -> SInteger)
 type ResultMap = M.Map String Integer
 
+-- | Extract all types of variables from an expression.
 getManyVars :: [Expr] -> Vars
 getManyVars es =
   let (vs, fvs, evs, uvs) = unzip4 $ map getVars es
@@ -59,6 +58,7 @@ getVars' (ArrayAccess v e) =
   in (vs, fvs, evs, v : uvs)
 getVars' _ = ([], [], [], [])
 
+-- | Generate SBV variables.
 genVars :: Vars -> Symbolic (VarMap, UVarMap)
 genVars (vs, fvs, evs, uvs) = do
   vs' <- sIntegers $ vs ++ fvs
@@ -67,8 +67,7 @@ genVars (vs, fvs, evs, uvs) = do
   return (M.fromList $ zip (vs ++ fvs ++ evs) (vs' ++ evs'),
           M.fromList $ zip uvs uvs')
 
-smtOp Plus = (+)
-smtOp Minus = (-)
+-- | Convert a GCL arithmetic expression to the corresponding SBV expression.
 toSmt :: (VarMap, UVarMap) -> Expr -> Symbolic SInteger
 toSmt vs (LitInt i) = return $ literal (toInteger i)
 toSmt (vs, _) (Name v) = return $
@@ -93,8 +92,10 @@ toSmt vs (Cond g et ef) = do
   return x
 toSmt _ _ = error "toSmt cannot handle logical expressions"
 
-smtOpB Eq = (.==)
-smtOpB Lt = (.<)
+smtOp Plus = (+)
+smtOp Minus = (-)
+
+-- | Convert a GCL logical expression to the corresponding SBV expression.
 toSmtB :: (VarMap, UVarMap) -> Expr -> Symbolic SBool
 toSmtB vs (LitBool b) = return $ fromBool b
 toSmtB vs (BinOp op e e') =
@@ -114,6 +115,10 @@ toSmtB vs (Forall v e) = toSmtB vs e
 toSmtB vs (Exist v e) = toSmtB vs e
 toSmtB _ e = error $ "toSmtB cannot handle arithmetic expressions: " ++ show e
 
+smtOpB Eq = (.==)
+smtOpB Lt = (.<)
+
+-- | Check whether an assumption reasons about arrays.
 containsArray :: Expr -> Bool
 containsArray ArrayAccess {} = True
 containsArray (BinOp _ e e') = containsArray e || containsArray e'
@@ -122,10 +127,12 @@ containsArray (Forall _ e) = containsArray e
 containsArray (Exist _ e) = containsArray e
 containsArray _ = False
 
+-- | Assign a model (i.e. a result from the SAT solver) to a logical expression.
 assign :: ResultMap -> Expr -> Expr
 assign model = subst vs es
   where (vs, es) = unzip $ map (second $ LitInt . fromInteger) $ M.toList model
 
+-- | Check whether the program's annotated specification is valid.
 check :: [Expr] -> Expr -> Symbolic String
 check assumptions goal = do
   -- Set logic

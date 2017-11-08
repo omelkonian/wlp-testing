@@ -1,4 +1,0 @@
-{ (forall i :: a[i] = 1) }
-ARRAY(x|y)
-  skip
-{ a[5] = 1 }

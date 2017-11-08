@@ -2,9 +2,10 @@ module Renaming where
 
 import Control.Monad.State
 import Data.List (elemIndex, findIndex)
-import AST
-import Debug.Trace
 
+import AST
+
+-- | Rename local variables in `Var` statements with fresh names.
 rename :: Stmt -> State Int Stmt
 rename Skip = return Skip
 rename (Assume e) = do
@@ -29,6 +30,7 @@ rename (VarStmt targets body) = do
   return $ VarStmt targets' (subst targets targets' body')
 rename _ = error "rename does not accept branching statements"
 
+-- | Rename local variables in quantified expressions with fresh names.
 renameE :: Expr -> State Int Expr
 renameE (Not e) = rename1 Not e
 renameE (BinOp op e1 e2) = do
@@ -62,6 +64,7 @@ renameSubE cons v e = do
     e' <- renameE $ substE v v' e
     return $ cons v' e'
 
+-- | Replace renamed variables in inner statements.
 subst :: [String] -> [String] -> Stmt -> Stmt
 subst _ _ Skip = Skip
 subst ts es (Assume e) = Assume $ substE ts es e
@@ -78,6 +81,7 @@ subst ts es (VarStmt targets body) =
         (ts', es') = unzip $ filter (\(t, _) -> notElem t targets) (zip ts es)
 subst _ _ _ = error "subst does not accept branching statements"
 
+-- | Replace renamed variables in inner expressions.
 substE :: [String] -> [String] -> Expr -> Expr
 substE ts es n@(Name x) =
   case elemIndex x ts of

@@ -14,9 +14,7 @@ import AST
 
 import Debug.Trace
 
--------------
--- Parsers --
--------------
+-- | Useful marcros.
 test p = parse (p <* eof) ""
 lexeme p = spaces *> p <* spaces
 str = lexeme . string
@@ -30,26 +28,23 @@ infix_ op f = Infix (reserved op >> return f) AssocLeft
 prefix op f = Prefix (reserved op >> return f)
 postfix op f = Postfix (reserved op >> return f)
 
--- Programs
+-- | Program.
 programP :: Parser Program
-programP = (hoareProgramP <|> simpleProgramP) <* eof
-
--- hoareProgramP :: Parser Program
-hoareProgramP = do
+programP = do
   pre <- "{" ~> exprP <~ "}"
-  prog <- simpleProgramP
-  post <- "{" ~> exprP <~ "}"
+  prog <- programBodyP
+  post <- ("{" ~> exprP <~ "}") <* eof
   return $ hoarify prog pre post
 
-simpleProgramP :: Parser Program
-simpleProgramP = do
+programBodyP :: Parser Program
+programBodyP = do
   name <- programNameP <~ "("
   inputs <- commas nameP <~ "|"
   outputs <- commas nameP <~ ")"
   stmt <- stmtP
   return $ Prog name inputs outputs stmt
 
--- Statements
+-- | Statements.
 stmtP :: Parser Stmt
 stmtP = buildExpressionParser table term
   where table = [ [infix_ ";" (<:>)] ]
@@ -145,7 +140,7 @@ varStmtP = do
   stmt <- "in" ~> stmtP <~ "end"
   return $ VarStmt vars stmt
 
--- Expressions
+-- | Expressions.
 exprP :: Parser Expr
 exprP =
   try condP <|>

@@ -1,11 +1,13 @@
 module AST where
 
+-- | Representation of a GCL program.
 data Program = Prog { name :: String
                     , inputs :: [String]
                     , outputs :: [String]
                     , body :: Stmt
                     }
 
+-- | Representation of a GCL statement.
 data Stmt = Skip
           | Assume Expr
           | Assert Expr
@@ -14,10 +16,9 @@ data Stmt = Skip
           | Ite Expr Stmt Stmt
           | While (Maybe Expr) Expr Stmt
           | VarStmt [String] Stmt
-          deriving ( Eq
-                  --  , Show
-                   )
+          deriving Eq
 
+-- | Representation of a GCL expression.
 data Expr = LitInt Int
           | LitBool Bool
           | Name String
@@ -28,17 +29,16 @@ data Expr = LitInt Int
           | Exist [String] Expr
           | ArrayAccess String Expr
           | RepBy Expr Expr Expr
-          deriving ( Eq
-                  --  , Show
-                   )
+          deriving Eq
 
-data Op = Plus | Minus | Imply | Lt | Eq deriving ( Eq
-                                                  -- , Show
-                                                  )
+-- | Representation of a GCL operator.
+data Op = Plus | Minus | Imply | Lt | Eq deriving Eq
 
+-- | Markers used by Normalizer.
 markAssumption = Forall ["$assumption"]
 markGoal = Forall ["$goal"]
 
+-- | Integrate (pre/post)-condition into the body of the program.
 hoarify :: Program -> Expr -> Expr -> Program
 hoarify prog pre post =
   prog { body = Assume pre
@@ -46,7 +46,7 @@ hoarify prog pre post =
             <:> Assert (markGoal post)
        }
 
--- DSL
+-- Utility DSL.
 infixr 1 <:>
 s <:> s' = Seq s s'
 infixr 2 .:=
@@ -80,7 +80,7 @@ _F = LitBool False
 i = LitInt
 n = Name
 
--- Display
+-- Display.
 inParens s = "(" ++ s ++ ")"
 instance Show Program where
   show prog =

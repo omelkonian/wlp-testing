@@ -1,4 +1,0 @@
-{ a[5] = 1 }
-ARRAY_FALSE(x|y)
-  skip
-{ a[5] = 2 }
