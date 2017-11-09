@@ -26,7 +26,7 @@ satArrayTests =
   , satTest15
   ]
 
-testSat ass g = unsafePerformIO $ runSMT $ check False ass g
+testSat ass g = unsafePerformIO $ runSMT $ check ass g
 
 satTest1 = testSat ass g @?= "Ignore"
   where

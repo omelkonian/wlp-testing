@@ -15,7 +15,6 @@ import System.Console.ANSI
 
 import AST
 import Parser (programP, manyProgramP)
-import PrettyPrinter (pp, ln)
 import Paths (getAllPaths)
 import Renaming (rename)
 import Wlp (wlp)
@@ -28,7 +27,6 @@ data Options = Options
   { inputFile   :: String
   , depthStart  :: Int
   , depthEnd    :: Int
-  , debug       :: Bool
   , all         :: Bool
   }
 
@@ -41,7 +39,6 @@ parseOptions = Options
       (short 's' <> showDefault <> value 1 <> metavar "INT" <> help "Min depth")
   <*> option auto
       (short 'e' <> showDefault <> value 100 <> metavar "INT" <> help "Max depth")
-  <*> switch (long "debug" <> short 'd' <> help "Whether to print debug info")
   <*> switch (long "all" <> short 'A' <> help "Whether to verify all programs")
 
 -- | Main.
@@ -53,7 +50,7 @@ withInfo opts desc = info (helper <*> opts) $ progDesc desc
 
 -- | Run WLP testing.
 run :: Options -> IO ()
-run (Options inputFile depthStart depthEnd debug all) = do
+run (Options inputFile depthStart depthEnd all) = do
   hSetBuffering stdin NoBuffering
   programs <- readFile inputFile
   case parse manyProgramP "" programs of
@@ -61,20 +58,13 @@ run (Options inputFile depthStart depthEnd debug all) = do
     Right progs ->
       for_ (if all then progs else [last progs]) (\prog -> do
         let p = prog { body = blackBox progs (body prog) }
-        when all $ pp p 0 >> pp (body p) 0 >> ln
+        when all $ print p
         for_ (getAllPaths depthStart depthEnd (body p)) (\path -> do
           let renamed = evalState (rename path) 0
-          when debug $ putStrLn "\n------- PATH -------" >> pp renamed 0 >> ln
           let predicate = wlp renamed _T
-          when debug $ putStrLn "\n------- WLP -------" >> pp predicate 0 >> ln
           let (assumptions, g) = normalize predicate
           let goal = fromMaybe (error "No goal") g
-          when debug (do
-            putStrLn "\n------- GOAL -------"
-            putStr "Assumptions: " >> ln
-            for_ assumptions (\ass -> putStrLn $ "\t" ++ show ass)
-            putStr "Goal: " >> ln >> putStr "\t" >> print goal)
-          res <- runSMT $ check debug assumptions goal
+          res <- runSMT $ check assumptions goal
           let color = case res of "Pass" -> Green
                                   "Ignore" -> Yellow
                                   "Fail" -> Red

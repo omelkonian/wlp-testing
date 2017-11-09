@@ -72,7 +72,7 @@ runInputs n inputFile = do
     let predicate = wlp renamed _T
     let (assumptions, g) = normalize predicate
     let goal = fromMaybe (error "No goal") g
-    runSMT $ check False assumptions goal
+    runSMT $ check assumptions goal
     )
   where
     p = last ps

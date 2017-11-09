@@ -16,7 +16,6 @@ import Wlp (subst)
 import Normalizer (prenexFixpoint)
 
 import Debug.Trace
-import PrettyPrinter (ln)
 
 -- | Type aliases.
 type Vars = ( [String] -- free variables
@@ -32,8 +31,8 @@ type SBVars = ( M.Map String SInteger -- free variables
 type ResultMap = M.Map String Integer
 
 -- | Check whether the program's annotated specification is valid.
-check :: Bool -> [Expr] -> Expr -> Symbolic String
-check debug a g = do
+check :: [Expr] -> Expr -> Symbolic String
+check a g = do
   let (assumptions, goal) = (map sanitizeE a, sanitizeE g)
   -- Set logic
   setLogic UFNIA
@@ -69,16 +68,6 @@ check debug a g = do
         res <- io $ prove $ do
           vars <- genVars $ getVars newGoal
           toSmtB vars newGoal
-        when debug $ io $ do
-          putStrLn "\n------- SAT -------"
-          putStr "Vars: " >> print assVars >> ln
-          putStrLn "Assumptions: " >> forM_ ass (\a -> putStrLn $ "\t" ++ show a)
-          putStr "ArrayAss: " >> print arrayAss >> ln
-          putStr "Model: " >> print model >> ln
-          putStrLn "Assumptions: " >> forM_ ass' (\a -> putStrLn $ "\t" ++ show a)
-          putStr "Goal: " >> print goal' >> ln
-          putStr "Goal': " >> print newGoal >> ln
-          putStr "\n------- Result -------\n" >> print res
         case show res of
           "Q.E.D." -> return "Pass"
           _ -> return "Fail"

@@ -1,10 +1,10 @@
 name:                wlp
 version:             0.1.0.0
 -- synopsis:
--- description:
+description:         WLP-based testing for the GCL language
 homepage:            https://github.com/omelkonian/wlp-testing
-author:              Orestis Melkonian, Chris Aronis
-maintainer:          Formal Verification/Testing
+author:              Orestis Melkonian
+maintainer:          Orestis Melkonian
 build-type:          Simple
 extra-source-files:  README.md
 cabal-version:       >=1.10
@@ -13,7 +13,6 @@ library
   hs-source-dirs:      src
   exposed-modules:     AST
                      , Parser
-                     , PrettyPrinter
                      , Paths
                      , Wlp
                      , Normalizer

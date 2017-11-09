@@ -11,7 +11,7 @@ To execute: `stack exec -- wlp <args>`
 To check available args: `stack exec -- wlp -h`
 
 ```bash
-  Usage: wlp (-i|--input INPUT_FILE) [-s INT] [-e INT] [-d|--debug] [-A|--all]
+  Usage: wlp (-i|--input INPUT_FILE) [-s INT] [-e INT] [-A|--all]
   WLP-based testing
 
   Available options:
@@ -19,7 +19,6 @@ To check available args: `stack exec -- wlp -h`
   -i,--input INPUT_FILE    GCL program
   -s INT                   Min depth (default: 1)
   -e INT                   Max depth (default: 100)
-  -d,--debug               Whether to print debug info
   -A,--all                 Whether to verify all programs
 ```
 
