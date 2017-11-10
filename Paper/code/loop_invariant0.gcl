@@ -1,0 +1,12 @@
+assume x > 2;
+var k in
+  k := 2;
+  assert x >= 0;
+  assume k > 0;
+  k--; x--;
+  assert x >= 0;
+  assume k > 0;
+  k--; x--;
+  assert x >= 0;
+  assume ~ (k > 0)
+assert x >= 0

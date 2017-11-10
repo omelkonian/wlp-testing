@@ -1,0 +1,10 @@
+-- Black-box program
+{P} Prog(i, j | k, l) {Q}
+-- Current program
+x, y := Prog(a, b)
+-- Final transformation
+var a', b', x', y' in
+  a', b' := a, b;
+  assert P[a,b/i,j];
+  assume Q[x',y'/k,l];
+  x, y := x', y'

@@ -1,0 +1,4 @@
+assert (
+  forall x ::
+    x + 0 = x
+)

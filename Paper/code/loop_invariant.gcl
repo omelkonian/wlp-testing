@@ -1,0 +1,8 @@
+{ x > 2 }
+LOOP_INVARIANT(x|y)
+  var k in
+    k := 2;
+    { x >= 0 }
+    while k > 0 do
+      k--; x--
+{ x >= 0 }

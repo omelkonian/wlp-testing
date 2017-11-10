@@ -1,0 +1,22 @@
+-- Length: 3
+assume x >= -1;
+assume ~ (x > 0);
+assert y = 0
+-- Length: 5
+assume x >= -1
+assume x > 0;
+x++;
+y := x;
+assume ~ (x > 0);
+assert y = 0
+-- Length: 8
+assume x >= -1
+assume x > 0;
+x++;
+y := x;
+assume x > 0;
+x++;
+y := x;
+assume ~ (x > 0);
+assert y = 0
+

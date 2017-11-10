@@ -1,0 +1,427 @@
+\documentclass[nonatbib,numbers,10pt]{sigplanconf}
+
+% Math
+\usepackage{amsmath}
+\usepackage{semantic}
+% BNF grammars
+\usepackage{backnaur}
+\newenvironment{bnfsplit}[1][0.7\textwidth]
+ {\minipage[t]{#1}$}
+ {$\endminipage}
+% Code listing
+\usepackage{minted}
+\usemintedstyle{tango}
+% Colors
+\usepackage{xcolor}
+\colorlet{CodeBg}{gray!90}
+% Graphs
+\usepackage{tikz}
+\usetikzlibrary{trees}
+\usetikzlibrary{positioning}
+
+\title{WLP-based Testing of GCL Programs}
+
+\authorinfo{Orestis Melkonian}{Utrecht University, The Netherlands}{o.melkonian@students.uu.nl}
+
+\begin{document}
+\toappear{}
+
+% Minted commands
+\newmintedfile[gcl]{haskell}{}
+
+\maketitle
+
+\begin{abstract}
+The Guarded Common Language (GCL) is a programming language invented by Edsger W. Dijkstra, which, due to its simplicity, is a suitable framework for trying out different verification and testing techniques.
+
+One instance of this is extending GCL with Hoare Logic annotations, i.e. a pre-condition and a post-condition. Using a predicate-based transformer, namely that of the weakest liberal precondition (WLP), we can try to verify whether the annotated properties actually hold.
+
+If we choose to do bounded verification (i.e. considering program paths up to a certain length), the problem of proving the annotated behaviour becomes decidable, as our programs only include linear arithmetic and infinite array operations.
+
+Here, we instead choose to do bounded testing, i.e. producing \textit{meaningful} value assignments to the program's input variables and checking whether the post-condition holds. Obviously, the produced claim is not complete (as in bounded verification), since there can be an assignment to the input variables that renders the post-condition false, which we did not include in our test cases.
+
+Last but not least, we provide an implementation of our approach, written in Haskell.
+
+\paragraph{Note:} The GCL presented here differs from the original one, but we will keep referring to it as GCL, for brevity's sake.
+\end{abstract}
+
+\ccsdesc[500]{Software and its engineering~Program verification}
+\ccsdesc[500]{Theory of computation~Program semantics}
+
+\keywords{Predicate transformer semantics; Weakest Liberal Pre-condition (WLP); Guarded Command Language (GCL); Hoare logic; automated testing; formal verification}
+
+\section{Problem Overview}
+
+\subsection{GCL syntax}
+Here is the basic syntax of GCL programs:
+
+\begin{bnf*}
+\bnfprod{Program}{
+	\bnfpn{Name} \bnfsp \bnfts{(} \bnfsp \bnfpn{Var*} \bnfsp \bnfts{$|$} \bnfsp \bnfpn{Var*} \bnfsp \bnfts{)} \bnfsp \bnfpn{Stmt}
+}\\
+\bnfprod{Stmt}{
+\begin{bnfsplit}
+	\bnfts{\textbf{skip}} \\ \bnfor
+	\bnfts{\textbf{assert}} \bnfsp \bnfpn{Expr} \\ \bnfor
+	\bnfts{\textbf{assume}} \bnfsp \bnfpn{Expr} \\ \bnfor
+	\bnfpn{Var*} \bnfsp \bnfts{:=} \bnfsp \bnfpn{Expr*} \\ \bnfor
+	\bnfpn{Stmt} \bnfsp \bnfts{;} \bnfsp \bnfpn{Stmt} \\ \bnfor
+	\bnfts{\textbf{if}} \bnfsp \bnfpn{Expr} \bnfsp \bnfts{\textbf{then}} \bnfsp \bnfpn{Stmt} \bnfsp \bnfts{\textbf{else}} \bnfsp \bnfpn{Stmt} \\ \bnfor
+	\bnfts{\textbf{while}} \bnfsp \bnfpn{Expr} \bnfsp \bnfts{\textbf{do}} \bnfsp \bnfpn{Stmt} \\ \bnfor
+	\bnfts{\textbf{var}} \bnfsp \bnfpn{Var*} \bnfsp \bnfts{\textbf{in}} \bnfsp \bnfpn{Stmt}
+\end{bnfsplit}
+}\\
+\bnfprod{Expr}{
+\begin{bnfsplit}
+	\bnfpn{Literal} \\ \bnfor 
+	\bnfpn{Var} \\ \bnfor
+	\bnfpn{Expr} \bnfsp \bnfpn{BinOp} \bnfsp \bnfpn{Expr} \\ \bnfor
+	\bnfts{(} \bnfsp \bnfts{\textbf{forall}} \bnfsp  \bnfpn{Var*} \bnfsp \bnfts{::} \bnfsp \bnfpn{Expr} \bnfsp \bnfts{)} \\ \bnfor	
+	\bnfpn{Var} \bnfsp \bnfts{[} \bnfsp \bnfpn{Expr} \bnfsp \bnfts{]}
+\end{bnfsplit}
+}\\
+\bnfprod{BinOp}{
+	\bnfts{$+$} \bnfor \bnfts{$-$} \bnfor \bnfts{$\Rightarrow$} \bnfor \bnfts{$<$} \bnfor \bnfts{$=$}
+}\\
+\bnfprod{Var}{\bnfpn{Char*}}\\
+\bnfprod{Name}{\bnfpn{Char*}}\\
+\bnfprod{Literal}{
+	\bnfts{True} \bnfor \bnfts{False} \bnfor \bnfts{0} \bnfsk \bnfts{9}
+}\\
+\bnfprod{Char}{
+	\bnfts{A} \bnfsk \bnfts{Z} \bnfor \bnfts{a} \bnfsk \bnfts{z}
+	\bnfor \bnfts{\$} \bnfor \bnfts{\_}
+}\\
+\end{bnf*}
+
+Using this basic syntax, we can derive useful operators, such as:
+\begin{align*}
+\exists x :: P x &\equiv \neg (\forall x :: \neg P x) \\
+e \land e' 	&\equiv \neg (e \rightarrow \neg e') \\
+e \lor e'  	&\equiv (e \rightarrow e') \rightarrow e' \\
+e \not= e' 	&\equiv \neg (e = e') \\
+e \le e'   	&\equiv \neg (e' < e) \\
+e > e'   	&\equiv e' < e \\
+e \ge e'   	&\equiv e' \le e \\
+x \; in \; [l..h] &\equiv l \le x \land x \le h 
+\end{align*}
+
+\subsection{GCL testing}
+Since the syntax introduced above contains two branching statements (i.e. loops and conditionals), we will test all possible paths up to some length, which ensures the procedure terminates (the number of these paths are finite).
+
+\section{Solution}
+In order to demonstrate all relevant steps, we will use a simple running example, shown below:
+
+\gcl{code/example.gcl}
+
+\subsection{Parser}
+The first step to testing a GCL program is to parse the actual source code, producing an internal representation that better fits our needs, namely an abstract syntax tree (AST).
+
+For instance, the example program will be represented by this AST (partially expanded, for brevity):
+
+\begin{figure}[h!]
+\begin{tikzpicture}
+\node{Seq}
+child {node {Assume}
+  child {node {$x \ge - 1$}}
+}
+child[missing] {}
+child[missing] {}
+child {node {Seq}
+  child {node {While}
+  	child {node {$x > 0$}}
+  	child {node {Seq}
+  	  child {node {$x := x + 1$}}
+	  child {node {$y := x$}}
+  	}
+  }
+  child[missing] {}
+  child {node {Assert}
+  	child {node {$y = 0$}}
+  }
+}
+child[missing] {};
+\end{tikzpicture}
+\end{figure}
+
+\subsection{Pathfinder}
+We then produce all possible paths (up to a given length) of the given program.
+
+In the case of an \textbf{if-then-else} statement, we derive all paths of the \textit{true} branch and the ones from the \textit{false} branch.
+
+In the case of a \textbf{while} loop, we begin unfolding it (i.e. starting from no iteration, to one iteration, etc...) and stop when we exceed the maximum length.
+
+Returning to our running example, if we restrict our pathfinding process up to length 10, we get the following program paths:
+
+%\newpage
+\gcl{code/example0.gcl}
+
+\subsection{Renamer}
+To safeguard against potential name conflicts in the future, we rename all locally-scoped variables with internally generated names.
+
+If the local variable was introduced by a \textbf{var} statement, we replace it with a fresh variable and propagate the change inside its body, as shown below:
+
+\tikzset{
+    task/.style = {
+      rounded corners,
+      text width=2cm,
+      align=center
+    },
+    --/.style = {
+      ->,
+      dashed, line width = 6pt,
+      thick,
+      >=stealth
+    },
+    -->/.style = {
+      ->,
+      thick,
+      -stealth
+    },
+}
+\begin{tikzpicture}
+	\node[task, text width=3cm] (A) at (1.5, 0) {
+    	\begin{minipage}{\textwidth}
+			\gcl{code/var.gcl}
+	   	\end{minipage}
+    };	  
+    \node[task, text width=3cm] (B) at (7, 0) {
+    	\begin{minipage}{\textwidth}
+      		\gcl{code/var2.gcl}
+       	\end{minipage}
+    };
+   \draw[-->] (2.5, 0) -- (4.5, 0);
+\end{tikzpicture}
+
+If the local variable was introduced by a \textbf{forall} expression, we replace it with a fresh variable and propagate the change in the contained expression, as shown below:
+
+\begin{tikzpicture}
+	\node[task, text width=3cm] (A) at (1.5, 0) {
+    	\begin{minipage}{\textwidth}  	
+			\gcl{code/forall.gcl}
+	   	\end{minipage}
+    };	  
+    \node[task, text width=3cm] (B) at (7, 0) {
+    	\begin{minipage}{\textwidth}
+      		\gcl{code/forall2.gcl}
+       	\end{minipage}
+    };
+   \draw[-->] (2.5, 0) -- (4.5, 0);
+\end{tikzpicture}
+
+\subsection{WLP-transformer}
+For each one of the programs paths, we are able to calculate its WLP automatically (starting from the annotated post-condition). This is achieved by the following rules:
+\begin{align*}
+wlp \; skip \; Q &= Q \\
+wlp \; (assert \; P) \; Q &= P \land Q \\
+wlp \; (assume \; P) \; Q &= P \Rightarrow Q \\
+wlp \; (x := e) \; Q &= Q[e/x] \\
+wlp \; (S \; ; \; S') \; Q &= wlp \; S \; (wlp \; S' \; Q) \\
+wlp \; (var \; x \; in \; S) \; Q &= (forall \; x :: wlp \; S \; Q) \\
+\end{align*}
+For instance, the WLP of our example program on the program path of length 5 would be:
+\begin{equation*}
+x \ge 1 \Rightarrow x > 0 \Rightarrow \neg (x + 1 > 0) \Rightarrow x + 1 > 0
+\end{equation*}
+
+\subsection{Normalizer}
+The generalization of the structure of the resulting WLP will always have the form:
+\begin{equation*}
+A_1 \Rightarrow A_2 \Rightarrow \dots \Rightarrow A_n \Rightarrow G
+\end{equation*}
+The above is equivalent to:
+\begin{equation*}
+A_1 \land A_2 \land \dots \land A_n \Rightarrow G
+\end{equation*}
+We can normalize this to a list of assumptions and a single final goal as such:
+\[
+\inference {A_1 \\ A_2 \\ \vdots \\ A_n}{G}
+\]
+Again a concrete instance of our running example:
+\[
+\inference {x \ge 1 \\ x > 0 \\ \neg (x + 1 > 0)}{x + 1 > 0}
+\]
+
+\subsection{TestGenerator}
+At this point, we could start randomly generating inputs and checking whether the logical claim holds.
+This would be highly inefficient though, as a proportion of these random inputs will falsify at least one of the assumptions, leading to the overall logical formula being valid.
+
+Hence, we only care about \textit{relevant} inputs, meaning that they render the assumptions valid. In other words, the test cases we wish to generate are the models that satisfy the left hand side of the implication, i.e.
+\begin{equation*}
+A_1 \land A_2 \land \dots \land A_n 
+\end{equation*}
+At this point, it is a good idea to employ the power of a back-end SMT solver (e.g. Z3/MathSAT) to retrieve these models.
+
+In the particular case of our example program path of length 5, the solver would not be able to find a model that satisfies $ x \ge 1  \land x > 0 \land \neg (x + 1 > 0) $, since it is not satisfiable. Thus, this program path is \textit{infeasible}, meaning there are no inputs we can feed the program, such that the control flow leads to this path. In such cases, we can simply ignore the path altogether and continue testing other paths.
+
+\subsection{GoalProver}
+Assuming the path we are testing is \textit{feasible} and an SMT solver has provided us with a \textit{relevant} test case, we can now assign the model to our goal, i.e. substitute all (free) variables with the model's value assignments.
+
+Unfortunately, it is not trivial to prove whether the resulting formula holds, due to the existence of quantifiers. Therefore, we again rely on the existing SMT solver to prove the goal. The caveat here is that the chosen Haskell library that interfaces with well-known SMT solvers, requires the formulas to be in \textit{prenex normal form}, i.e. a proposition where all quantifiers appear in the beginning of the formula.
+
+Since our logical connectives consist only of negation and implication, we apply these simple rewriting rules to convert our goal to \textit{prenex normal form}:
+\begin{align*}
+\neg \exists x :: \phi &\equiv \forall x :: \neg \phi \\
+\neg \forall x :: \phi &\equiv \exists x :: \neg \phi \\
+(\forall x :: \phi) \Rightarrow \psi &\equiv \exists x :: \phi \Rightarrow \psi \\
+(\exists x :: \phi) \Rightarrow \psi &\equiv \forall x :: \phi \Rightarrow \psi \\
+\phi \Rightarrow (\exists x :: \psi) &\equiv \exists x :: \phi \Rightarrow \psi \\
+\phi \Rightarrow (\forall x :: \psi) &\equiv \forall x :: \phi \Rightarrow \psi
+\end{align*}
+We can now conclude our testing process, by aggregating over the results of all examined program paths and giving an overall answer.
+
+\section{Handling Arrays}
+So far we have eluded the way in which we handle (infinite) arrays, since our running example did not contain any array accesses.
+
+Reasoning about arrays is possible by treating them as uninterpreted functions, i.e. an access of array $\alpha$ at index $\iota$ is equivalent to $\alpha(\iota)$, where $\alpha$ is an uninterpreted function and, thus, the only axiom we have is that it is deterministic, i.e.:
+\begin{equation*}
+\forall x,y :: x = y \Rightarrow \alpha(x) = \alpha(y)
+\end{equation*}
+An important thing to note here is that, as the symbols that represent the arrays are uninterpreted, the models we retrieve from the assumptions will not contain a value assignment to them. Nonetheless, the assumptions involving them will still contribute to finding \textit{relevant} inputs. Furthermore, we need to propagate assumptions involving arrays to the goal, essentially reversing the normalizer's step.
+
+To demonstrate reasoning about arrays, let us see an example program which finds the index of the minimum element of an array within a specified range:
+
+\gcl{code/minind.gcl}
+
+Let's examine the program path with two iterations of the \textbf{while} loop statement, where in the first one we take the \textit{false} branch of the \textbf{if-then-else} statement and, in the second time, we take the \textit{true} branch:
+
+\gcl{code/minind0.gcl}
+
+The resulting (normalized) WLP will be:
+\[
+\inference {
+	i < N \\ 
+	i < N \\
+	\neg (a[i] < a[i]) \\
+	i + 1 < N \\
+	a[i+1] < a[i] \\
+	\neg (i + 2 < N)	
+}{\forall j \; in \; [i..N) \Rightarrow a[i+1] \le a[j]}
+\]
+A possible model that validates the assumptions would be $i = 0$ and $N = 2$ (the uninterpreted symbol $a$ will not be assigned a value).
+
+We now merge the goal with the assumptions which reason about arrays, leaving us with the following goal to prove:
+\begin{equation*}
+\neg (a[0] < a[0]) \Rightarrow a[1] < a[0] \Rightarrow \forall j \; in \; [0..2) \Rightarrow a[1] \le a[j]
+\end{equation*}
+We can easily see that the proposition above is valid, but would be impossible to prove if we hadn't carried the selected assumptions into our goal.
+
+\section{Extensions}
+In this section, we will discuss extensions we made to the basic functionality discussed so far, in order to increase the expressiveness of our language.
+
+\subsection{Array Assignment}
+If we allow assigning values to specific indices of an array, we must first extend the syntax with array assignment statements, conditional and \textbf{repby} expressions, as follows:
+\begin{bnf*}
+\bnfprod{Stmt}{
+\begin{bnfsplit}
+	\bnfsk \\ \bnfor
+	\bnfpn{Var} \bnfsp \bnfts{[} \bnfpn{Expr} \bnfts{]} \bnfsp \bnfts{:=} \bnfsp \bnfpn{Expr*}
+\end{bnfsplit}
+}\\
+\bnfprod{Expr}{
+\begin{bnfsplit}
+	\bnfsk \\ \bnfor
+	\bnfts{(} \bnfpn{Expr} \bnfsp \bnfts{$\rightarrow$} \bnfsp \bnfpn{Expr} \bnfsp \bnfts{$|$} \bnfsp \bnfpn{Expr} \bnfts{)} \\ \bnfor
+	\bnfpn{Var} \bnfts{[} \bnfpn{Expr} \bnfsp \bnfts{$\rightarrow$} \bnfsp \bnfpn{Expr} \bnfts{]}
+\end{bnfsplit}
+}\\
+\end{bnf*}
+We can now replace assignments to specific array indices with a copy of the whole array, where the element at some index has been changed to the assigned value, as follows:
+\begin{equation*}
+(a[i] := e) \equiv (a := a[i \rightarrow e])
+\end{equation*}
+
+\noindent
+While calculating the WLP of such statements, we will need to replace occurrences of arrays with conditional expressions regarding their indices, based on previous assignments (e.g. $a[i] := e$):
+\begin{equation*}
+P(a[x]) \equiv P(x = i -> e \; | \; a[x])
+\end{equation*}
+
+\noindent
+As mainstream variants of first-order logic do not support the introduced conditional expressions, we preprocess the logical formulas before giving them to the SMT solver. Assuming a conditional expression $(x = i -> e \; | \; e')$, we replace it with a freshly generated free variable $y$ and add two assumptions, namely:
+\begin{align}
+x = i &\Rightarrow y = e \\
+x \not= i &\Rightarrow y = e'
+\end{align}
+
+\noindent
+As an example, consider a program that swaps positions on two elements of an array:
+
+\gcl{code/swap.gcl}
+
+\noindent
+We only need to consider one program path, since there are no branching statements in the original program.
+The resulting goal will be:
+\begin{align*}
+&a[i] = (j = j -> a[i] \; | \; (j = i -> a[j] \; | \; a[j])) \; \land \\
+&a[j] = (i = j -> a[i] \; | \; (i = i -> a[j] \; | \; a[i])) \; \land \\
+&\forall k :: k \not= i \land k \not= j \Rightarrow \\
+& \; \; \; a[k] = (k = j -> a[i] \; | \; (k = i -> a[j] \; | \; a[k]))
+\end{align*}
+
+\subsection{Loop Invariants}
+Another extension we have made is to allow the programmer to annotate his/her loops with invariants, which are then asserted through each iteration, alongside the final goal. This basically allows for finer-grained verification.
+
+Specifically, we insert an assertion before the loop statement, making sure the invariant will hold after the initial part of the program has been executed. Moreover, we insert an assertion at the end of every iteration, making sure the invariant holds in each unfolding of the loop.
+
+Firstly, we need to extend the syntax of while statements, as such:
+\begin{bnf*}
+\bnfprod{Stmt}{
+\begin{bnfsplit}
+	\bnfsk \\ \bnfor
+	\bnfts{$\lbrace$} \bnfpn{Expr} \bnfts{$\rbrace$} \bnfts{\textbf{while}} \bnfsp \bnfpn{Expr} \bnfsp \bnfts{\textbf{do}} \bnfsp \bnfpn{Stmt}
+\end{bnfsplit}
+}\\
+\end{bnf*}
+
+\noindent
+Let us now consider a program, which has an annotated loop:
+
+\gcl{code/loop_invariant.gcl}
+
+\noindent
+The only \textit{feasible} path is the one in which we have two loop iterations, amongst which we have inserted assertions proving the invariant:
+
+\gcl{code/loop_invariant0.gcl}
+
+\subsection{Program Calls}
+Another useful feature we added is the ability to combine programs, namely non-recursively calling a program inside another program. First, we need the extend the syntax of GCL assignments to accommodate this feature, as such:
+\begin{bnf*}
+\bnfprod{Stmt}{
+\begin{bnfsplit}
+	\bnfsk \\ \bnfor
+	\bnfpn{Var*} \bnfsp \bnfts{:=} \bnfsp \bnfpn{Name} \bnfsp \bnfts{(}  \bnfpn{Expr*} \bnfsp \bnfts{)}
+\end{bnfsplit}
+}\\
+\end{bnf*}
+
+We simply do \textit{black-box testing} and replace such assignments, as follows:
+
+\gcl{code/progs.gcl}
+
+\noindent
+\paragraph{Note:}Since no program-call recursion is allowed, a program is only allowed to call programs declared above it in the source file.
+
+\subsection{Multiple Relevant Test Cases}
+Up to this point, we have only examined a single test case, namely one model that satisfies the assumptions. This is quite problematic, as can be seen in the example below:
+
+\gcl{code/multiple.gcl}
+
+If we only examine a single model, we would (most likely) get the model $x \mapsto 0$, which passes the test, whilst the model $x \mapsto 1$ does not!
+
+Therefore, instead of retrieving just one model from the SMT solver, we retrieve many of them, with each subsequent one excluding the value assignments of the previous. In the example program above, we would first have this (normalized) goal:
+\[ \inference {x \ge 0}{ x + 1 < 2} \]
+
+Assuming the model returned to us is ${x \mapsto 0}$ (which makes the goal valid), we proceed to the next test case with the following goal:
+\[ \inference {x \ge 0 \\ x \not= 0}{ x + 1 < 2} \]
+
+Assuming we now get the model $x \mapsto 1$, we can prove that the goal is invalid, hence finding a bug in the program with just one additional test case.
+
+\section{Conclusion}
+Summing up, we have presented an efficient way of testing properties of programs written in an expressive variant of GCL, involving loops, conditionals, local variables, linear arithmetic, arrays and program calls. 
+
+This properties are expressed in Hoare logic, namely a pre-condition which is assumed to hold initially, a post-condition which should hold at the end of the program's execution and several invariants annotating the program's loop statements.
+
+We conceptuality our testing approach with a software tool written in Haskell, using the \textit{Data.SBV} library to interface with a mainstream SMT solver. As the testing we conduct here is bounded, the software tool allows you to parametrize the maximum path length that should be investigated. Additionally, it is possible to control the desired number of test cases generated for each path, enabling the user to trade off computation time with a more credible test result.
+
+\end{document}

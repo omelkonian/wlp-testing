@@ -1,0 +1,14 @@
+{ i < N }
+var min, i0 in
+  i0 := i;
+  min, r := a[i0], i0;
+  assume i0 < N;
+  assume ~ (a[i0] < min);
+  skip;
+  i0++;
+  assume i0 < N;
+  assume a[i0] < min;
+  min, r := a[i0], i;
+  i0++
+  assume ~ (i0 < N)
+{ (forall j :: j in [i..N) ==> a[r] <= a[j]) }

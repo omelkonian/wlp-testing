@@ -1,0 +1,9 @@
+{ true }
+SWAP(a, i, j | r)
+  r := a;
+  r[i] := a[j];
+  r[j] := a[i]
+{ a[i] = r[j] /\
+  a[j] = r[i] /\
+  (forall k :: k != i /\ k != j ==> a[k] = r[k])
+}
