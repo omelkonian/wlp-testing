@@ -1,4 +1,4 @@
-module SAT (check) where
+module SAT where
 
 import System.Console.ANSI
 import System.IO.Unsafe
@@ -29,10 +29,16 @@ type SBVars = ( M.Map String SInteger -- free variables
               , M.Map String (SInteger -> SInteger) -- uninterpreted variables
               )
 type ResultMap = M.Map String Integer
+data Result = Pass | Fail | Ignore deriving Eq
+
+instance Show Result where
+  show Pass = "Pass"
+  show Fail = "Fail"
+  show Ignore = "Ignore (infeasible path)"
 
 -- | Check whether the program's annotated specification is valid.
-check :: [Expr] -> Expr -> Symbolic String
-check a g = do
+check :: Int -> [Expr] -> Expr -> Symbolic Result
+check n a g = do
   let (assumptions, goal) = (map sanitizeE a, sanitizeE g)
   -- Set logic
   setLogic UFNIA
@@ -44,33 +50,49 @@ check a g = do
   -- Contraints
   assumptions' <- mapM (toSmtB assVars') ass
   forM_ assumptions' constrain
-  -- Query
-  query $ do
-    cs <- checkSat
-    case cs of
-      Unk   -> error "Undecidable!"
-      Unsat -> return "Ignore"
-      Sat   -> do
-        -- Check if input assumptions are satisfiable (i.e. path is feasible)
-        let resultVars = filter (\(v, _) -> head v /= '$') $ M.toList assVs
-        res <- forM resultVars (\(v, x) -> do
-          xv <- getValue x
-          return (v, xv))
-        let model = M.fromList res
-        -- Model assignment (i.e. relevant test case)
-        let goal' = assign model goal
-        let forallAss = map (assign model) $ filter (containsUVar $ map fst res) ass
-        let arrayAss = map (assign model) $ filter containsArray ass
-        let ass' = nub $ forallAss ++ arrayAss
-        let newGoal =
-              prenexFixpoint $ BinOp Imply (foldr (/\) _T ass') goal'
-        -- Check if goal is provable
-        res <- io $ prove $ do
-          vars <- genVars $ getVars newGoal
-          toSmtB vars newGoal
-        case show res of
-          "Q.E.D." -> return "Pass"
-          _ -> return "Fail"
+
+  let excludeModel model =
+        -- Constrain next model to have at least one different value than before
+        unless (null model) $
+          constrain $ foldl1 (|||) $ map (\(x, xv) -> x ./= literal xv) model
+  let next i = if i == 0 then return [] else do
+        cs <- checkSat
+        case cs of
+          Unk   -> error "Undecidable!"
+          Unsat -> return [Ignore]
+          Sat   -> do
+            -- Check if input assumptions are satisfiable (i.e. path is feasible)
+            let resVars = filter (\(v, _) -> head v /= '$') $ M.toList assVs
+            model <- forM resVars (\(v, x) -> do
+              xv <- getValue x
+              return (v, x, xv))
+            -- Model assignment (i.e. relevant test case)
+            let assignModel =
+                  assign $ M.fromList $ map (\(v, _, xv) -> (v, xv)) model
+            let goal' = assignModel goal
+            let ass' =
+                  map assignModel $ filter (containsUVar $ map fst resVars) ass ++ filter containsArray ass
+            let newGoal = prenexFixpoint $ BinOp Imply (foldr (/\) _T ass') goal'
+            -- Check if goal is provable
+            res <- io $ prove $ do
+              vars <- genVars $ getVars newGoal
+              toSmtB vars newGoal
+            case show res of
+              "Q.E.D." -> do
+                -- Exclude current model from future SAT calls
+                excludeModel $ map (\(_, x, xv) -> (x, xv)) model
+                -- Check other satisfiable models
+                rest <- next (i - 1)
+                return $ Pass : rest
+              _ -> return [Fail]
+  -- Results from all requested (relevant) test cases
+  results <- query $ next n
+  if Fail `elem` results then
+    return Fail
+  else if Pass `elem` results then
+    return Pass
+  else
+    return Ignore
 
 -- | Assign a model (i.e. a result from the SAT solver) to a logical expression.
 assign :: ResultMap -> Expr -> Expr

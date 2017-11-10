@@ -23,70 +23,70 @@ satTests =
   , satTest12
   ]
 
-testSat ass g = unsafePerformIO $ runSMT $ check ass g
+testSat ass g = unsafePerformIO $ runSMT $ check 1 ass g
 
-satTest1 = testSat ass g @?= "Fail"
+satTest1 = testSat ass g @?= Fail
   where
     ass = [x .>= i (-1), Not $ x .> i 0]
     g = y .= i 0
     [x, y] = map n ["x", "y"]
 
-satTest2 = testSat ass g @?= "Pass"
+satTest2 = testSat ass g @?= Pass
   where
     ass = [x .>= i 1, x .< i 2, x .= y .+ i 1 .- i 0]
     g = y .= i 0
     [x, y] = map n ["x", "y"]
 
-satTest3 = testSat ass g @?= "Fail"
+satTest3 = testSat ass g @?= Fail
   where
     ass = [x .>= i 1, x .< i 2, x .= y .+ i 1 .- i 0]
     g = y .> i 0 \/ y .= i 1
     [x, y] = map n ["x", "y"]
 
-satTest4 = testSat [] g @?= "Pass"
+satTest4 = testSat [] g @?= Pass
   where
     g = Forall ["x"] $ x .= i 1 ==> x .+ i 1 .= i 2
     x = n "x"
 
-satTest5 = testSat [] g @?= "Fail"
+satTest5 = testSat [] g @?= Fail
   where
     g = Forall ["x"] $ x .= i 1 ==> x .+ i 1 .= i 1
     x = n "x"
 
-satTest6 = testSat ass g @?= "Pass"
+satTest6 = testSat ass g @?= Pass
   where
     ass = [ x .= i 0 ]
     g = a_x .= a_0
     [x, a_x, a_0] = [n "x", "a" .! x, "a" .! i 0]
 
-satTest7 = testSat ass g @?= "Fail"
+satTest7 = testSat ass g @?= Fail
   where
     ass = [ x .= i 0 ]
     g = a_x .= a_1
     [x, a_x, a_1] = [n "x", "a" .! x, "a" .! i 1]
 
-satTest8 = testSat [] g @?= "Fail"
+satTest8 = testSat [] g @?= Fail
   where
     g = x .> i 1 ==> x .+ i 1 .= i 1
     x = n "x"
 
-satTest9 = testSat [] g @?= "Fail"
+satTest9 = testSat [] g @?= Fail
   where
     g = Forall ["x"] $
           (x .< i 1) /\ (x .< i 1 ==> x .+ i 1 .= i 1)
     x = n "x"
 
-satTest10 = testSat [] g @?= "Fail"
+satTest10 = testSat [] g @?= Fail
   where
     g = Forall ["x"] $ x .< i 2 ==> x .+ i 1 .= i 1
     x = n "x"
 
-satTest11 = testSat [] g @?= "Fail"
+satTest11 = testSat [] g @?= Fail
   where
     g = Forall ["x"] $ x .= i 2 ==> x .+ i 1 .= i 1
     x = n "x"
 
-satTest12 = testSat [] g @?= "Fail"
+satTest12 = testSat [] g @?= Fail
   where
     g = "a" .! x .= i 0
     x = n "x"

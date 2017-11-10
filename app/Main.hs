@@ -19,12 +19,13 @@ import Paths (getAllPaths)
 import Renaming (rename)
 import Wlp (wlp)
 import Normalizer (normalize)
-import SAT (check)
+import SAT
 import ProgramCalls (blackBox)
 
 -- | Command-line options.
 data Options = Options
   { inputFile   :: String
+  , n           :: Int
   , depthStart  :: Int
   , depthEnd    :: Int
   , all         :: Bool
@@ -34,12 +35,40 @@ data Options = Options
 parseOptions :: Parser Options
 parseOptions = Options
   <$> strOption
-      (long "input" <> short 'i' <> metavar "INPUT_FILE" <> help "GCL program")
+      (  long "input"
+      <> short 'i'
+      <> metavar "STRING"
+      <> help "GCL program file"
+      )
   <*> option auto
-      (short 's' <> showDefault <> value 1 <> metavar "INT" <> help "Min depth")
+      (  long "relevant-count"
+      <> short 'n'
+      <> showDefault
+      <> value 10
+      <> metavar "INT"
+      <> help "Number of relevant test cases"
+      )
   <*> option auto
-      (short 'e' <> showDefault <> value 100 <> metavar "INT" <> help "Max depth")
-  <*> switch (long "all" <> short 'A' <> help "Whether to verify all programs")
+      (  long "min-depth"
+      <> short 's'
+      <> showDefault
+      <> value 1
+      <> metavar "INT"
+      <> help "Min depth"
+      )
+  <*> option auto
+      (  long "max-depth"
+      <> short 'e'
+      <> showDefault
+      <> value 100
+      <> metavar "INT"
+      <> help "Max depth"
+      )
+  <*> switch
+      (  long "verify-all"
+      <> short 'A'
+      <> help "Whether to verify all programs"
+      )
 
 -- | Main.
 main :: IO ()
@@ -50,7 +79,7 @@ withInfo opts desc = info (helper <*> opts) $ progDesc desc
 
 -- | Run WLP testing.
 run :: Options -> IO ()
-run (Options inputFile depthStart depthEnd all) = do
+run (Options inputFile n depthStart depthEnd all) = do
   hSetBuffering stdin NoBuffering
   programs <- readFile inputFile
   case parse manyProgramP "" programs of
@@ -64,12 +93,12 @@ run (Options inputFile depthStart depthEnd all) = do
           let predicate = wlp renamed _T
           let (assumptions, g) = normalize predicate
           let goal = fromMaybe (error "No goal") g
-          res <- runSMT $ check assumptions goal
-          let color = case res of "Pass" -> Green
-                                  "Ignore" -> Yellow
-                                  "Fail" -> Red
+          res <- runSMT $ check n assumptions goal
+          let color = case res of Pass -> Green
+                                  Ignore -> Yellow
+                                  Fail -> Red
           setSGR [SetColor Foreground Vivid color]
-          putStrLn res
+          print res
           setSGR [Reset]
           )
         )

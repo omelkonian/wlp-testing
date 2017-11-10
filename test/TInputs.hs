@@ -14,7 +14,7 @@ import Paths (getAllPaths)
 import Renaming (rename)
 import Wlp (wlp)
 import Normalizer (normalize)
-import SAT (check)
+import SAT
 import ProgramCalls (blackBox)
 
 inputTests =
@@ -64,7 +64,7 @@ inputTests =
   , sortFail
   ]
 
-runInputs :: Int -> String -> [String]
+runInputs :: Int -> String -> [Result]
 runInputs n inputFile = do
   let stmt = blackBox ps (body p)
   unsafePerformIO $ forM (take n $ getAllPaths 0 35 stmt) (\path -> do
@@ -72,7 +72,7 @@ runInputs n inputFile = do
     let predicate = wlp renamed _T
     let (assumptions, g) = normalize predicate
     let goal = fromMaybe (error "No goal") g
-    runSMT $ check assumptions goal
+    runSMT $ check 1 assumptions goal
     )
   where
     p = last ps
@@ -82,8 +82,8 @@ runInputs n inputFile = do
         Left err -> error (show err)
         Right ps -> return ps
 
-fail n input = "Fail" `elem` runInputs n input @?= True
-pass n input = "Fail" `notElem` runInputs n input @?= True
+fail n input = Fail `elem` runInputs n input @?= True
+pass n input = Fail `notElem` runInputs n input @?= True
 
 arith = pass 1 "examples/arith.gcl"
 local = pass 2 "examples/local.gcl"
