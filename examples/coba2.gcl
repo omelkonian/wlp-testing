@@ -1,0 +1,6 @@
+{ true }
+coba(a, N | dummy)
+  assume (forall j :: j in [0..N) ==> (a[j] = a[j+1]))  ;
+  assume N = 2 ;
+  assert (forall j :: j in [0..N) ==> (a[j] <= a[j+1]))
+{ true }

@@ -1,0 +1,6 @@
+{ true }
+COBA(a, n | dummy)
+  assume (forall j :: j in [0..n) ==> a[j] = a[j+1]);
+  assume n = 2;
+  assert (forall j :: j in [0..n) ==> a[j] <= a[j+1])
+{ true }
